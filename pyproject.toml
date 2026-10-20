@@ -1,0 +1,47 @@
+[project]
+name = "spyglass-api"
+version = "0.0.1"
+description = "Spyglass research application API"
+requires-python = ">=3.13,<3.14"
+dependencies = [
+  "fastapi>=0.115,<1",
+  "uvicorn[standard]>=0.34,<1",
+  "pydantic-settings>=2.8,<3",
+  "sqlalchemy>=2.0.38,<2.1",
+  "psycopg[binary,pool]>=3.2,<4",
+  "alembic>=1.15,<2",
+  "redis>=5.2,<8",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3,<10",
+    "pytest-asyncio>=0.25,<2",
+    "httpx>=0.28,<1",
+    "ruff>=0.11,<1",
+    "mypy>=1.15,<2",
+    "httpx2>=2.15.1",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["apps/api/tests"]
+pythonpath = ["apps/api"]
+asyncio_mode = "auto"
+markers = ["integration: requires real PostgreSQL and Redis"]
+
+[tool.ruff]
+target-version = "py313"
+line-length = 100
+src = ["apps/api"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "ASYNC"]
+
+[tool.mypy]
+python_version = "3.13"
+mypy_path = "apps/api"
+strict = true
+files = ["apps/api/app"]
+
+[tool.uv]
+package = false

@@ -1,0 +1,65 @@
+[
+  {
+    "sha256": "37a87b9b8353b8a97257f9941ec0aa35c4715f7b85aa1d2dc5faed094ed59bad",
+    "file": "01-workbench.png",
+    "original": "初始工作台.png",
+    "width": 1672,
+    "height": 941
+  },
+  {
+    "sha256": "321f245e8c1dd1ed8db3d4380eba6299d4efe89e7e69fa8ea490ff675dcd58e3",
+    "file": "02-my-research.png",
+    "original": "我的调研.png",
+    "width": 1672,
+    "height": 941
+  },
+  {
+    "sha256": "6770a5be1a1469e47f72572dcaede7e1e7a263322c43bac0302a3dcb5d894daf",
+    "file": "03-research-session.png",
+    "original": "会话与报告.png",
+    "width": 1586,
+    "height": 992
+  },
+  {
+    "sha256": "1944cc3577bbb4ea8289412b9037ac9f71941033c925e06287bbbd52c7b53719",
+    "file": "04-competitor-profile.png",
+    "original": "竞品档案.png",
+    "width": 1672,
+    "height": 941
+  },
+  {
+    "sha256": "0109643ec2017708ff6de78f4688974349b1d5a88f6c624ae42e4d429028ada0",
+    "file": "05-intelligence.png",
+    "original": "竞争情报.png",
+    "width": 1672,
+    "height": 941
+  },
+  {
+    "sha256": "1abdc9edb8bac990f69793e3bb86ef58ac4e67a936f0187170dd430a2f6cf6a1",
+    "file": "06-report-center.png",
+    "original": "报告中心.png",
+    "width": 1672,
+    "height": 941
+  },
+  {
+    "sha256": "d91d832b9bbc1da291be66c8471bfe144d37fcaa98d4203ab90f96a4a026a481",
+    "file": "07-skill-center.png",
+    "original": "技能中心.png",
+    "width": 1672,
+    "height": 941
+  },
+  {
+    "sha256": "dcf52977f10de2773b9df82bb07982af6842ab9651d724771997bdcd4daa2b61",
+    "file": "08-trace-overview.png",
+    "original": "运行追踪.png",
+    "width": 1672,
+    "height": 941
+  },
+  {
+    "sha256": "f76468691c05f06a2ab1fd78c8fd9b0ca780fd611f37cf3069b0f2631f547673",
+    "file": "09-trace-detail.png",
+    "original": "ChatGPT 图像 2026年9月26日 17_20_32-6.png",
+    "width": 1672,
+    "height": 941
+  }
+]

@@ -1,0 +1,1 @@
+"""Concrete external resource adapters."""
