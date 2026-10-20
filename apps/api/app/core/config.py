@@ -36,6 +36,8 @@ class Settings(BaseSettings):
     llm_max_concurrency: int = Field(default=3, ge=1, le=16)
     llm_request_timeout_seconds: int = Field(default=60, ge=5, le=180)
     run_timeout_seconds: int = Field(default=240, ge=30, le=900)
+    research_max_repairs: int = Field(default=2, ge=0, le=4)
+    local_run_capacity: int = Field(default=2, ge=1, le=8)
 
     @model_validator(mode="after")
     def validate_production_cookies(self) -> "Settings":

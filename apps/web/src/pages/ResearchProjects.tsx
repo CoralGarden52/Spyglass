@@ -4,6 +4,7 @@ import { Link, useParams } from 'react-router';
 import { FileText, FolderPlus, Search, X } from 'lucide-react';
 import { createProject, getProject, listProjects } from '../services/research';
 import { ApiError } from '../services/client';
+import { ProjectReports } from '../features/reports/ProjectReports';
 
 const modeLabels: Record<string, string> = {
   quick: '快速调研',
@@ -232,12 +233,12 @@ export function ResearchDetail() {
           </div>
           <section className="account-panel">
             <h2>项目已保存</h2>
-            <p className="muted">刷新后仍可读取此项目。目前尚未启动研究，暂无消息、证据与报告。</p>
-            <p className="muted">研究执行功能正在准备中，开放后可在此启动分析。</p>
+            <p className="muted">刷新后仍可读取项目及已保存报告。前端运行入口将在下一切片接入。</p>
             <button className="primary-button" disabled title="研究执行尚未开放">
               开始分析（尚未开放）
             </button>
           </section>
+          <ProjectReports projectId={id} />
         </>
       )}
     </main>

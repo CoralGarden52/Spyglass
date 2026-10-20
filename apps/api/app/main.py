@@ -2,16 +2,21 @@ from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
 from uuid import uuid4
 
+import httpx
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.agent.runtime.executor import LocalRunExecutor, ResearchRunner
 from app.agent.skills.registry import SkillRegistry
+from app.agent.tools.registry import ToolRegistry
 from app.api.auth import router as auth_router
 from app.api.health import router
+from app.api.reports import router as reports_router
 from app.api.research import router as research_router
 from app.api.skills import router as skills_router
 from app.core.config import ROOT, Settings
 from app.core.errors import ErrorResponse, install_error_handlers
+from app.infrastructure.providers.chat import ChatProvider
 from app.infrastructure.resources import Resources
 
 
@@ -24,9 +29,28 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         application.state.settings = config
         application.state.resources = resources
         application.state.skills = SkillRegistry.from_directory(ROOT / "extensions/skills")
+        client = httpx.AsyncClient(
+            timeout=httpx.Timeout(config.llm_request_timeout_seconds, connect=10),
+            trust_env=False,
+            follow_redirects=False,
+        )
+        provider = ChatProvider(
+            client,
+            config.deepseek_base_url,
+            config.deepseek_api_key.get_secret_value(),
+            config.deepseek_model,
+            config.llm_max_concurrency,
+            config.llm_request_timeout_seconds,
+        )
+        application.state.executor = LocalRunExecutor(
+            ResearchRunner(resources, config, provider, ToolRegistry(client, config)),
+            config.local_run_capacity,
+        )
         try:
             yield
         finally:
+            await application.state.executor.close()
+            await client.aclose()
             await resources.close()
 
     application = FastAPI(
@@ -63,6 +87,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     application.include_router(auth_router)
     application.include_router(research_router)
     application.include_router(skills_router)
+    application.include_router(reports_router)
     return application
 
 

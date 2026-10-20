@@ -60,6 +60,7 @@ class RunPreparation:
             status="pending",
             idempotency_key=key,
             request_hash=checksum,
+            request_json=request.model_dump(mode="json"),
             skills_snapshot_json=[s.model_dump(mode="json") for s in resolution.data.skills],
         )
         self.database.add(run)

@@ -1,5 +1,128 @@
 @import 'tailwindcss';
 
+.saved-reports {
+  border: 1px solid #e6eae8;
+  border-radius: 12px;
+  padding: 24px;
+  margin-top: 24px;
+}
+.saved-reports .text-button,
+.source-buttons {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+}
+.report-choices {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 20px 0;
+}
+.report-choices .selected {
+  border-color: #0c5b3d;
+  background: #eef7f2;
+  color: #0c5b3d;
+}
+.persisted-report {
+  max-width: 1000px;
+  margin: auto;
+}
+.report-limitations {
+  background: #f7f9f8;
+  border-radius: 8px;
+  padding: 14px;
+  color: #64716c;
+  font-size: 12px;
+  line-height: 1.9;
+  margin: 18px 0;
+}
+.persisted-section {
+  border-bottom: 1px solid #e6eae8;
+  padding: 20px 0;
+}
+.persisted-section h3 {
+  font-size: 16px;
+}
+.report-claim {
+  padding: 12px 0;
+  font-size: 13px;
+  line-height: 1.9;
+}
+.source-buttons {
+  margin-left: 12px;
+}
+.persisted-report details {
+  font-size: 12px;
+  margin: 15px 0;
+}
+.persisted-report summary {
+  cursor: pointer;
+  color: #0c5b3d;
+}
+.persisted-report pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 11px;
+  line-height: 1.7;
+  max-height: 450px;
+  overflow: auto;
+  background: #f7f9f8;
+  padding: 15px;
+  border-radius: 8px;
+}
+.report-audit > section {
+  padding: 12px 0;
+  line-height: 1.8;
+}
+.report-audit code {
+  font-size: 10px;
+  overflow-wrap: anywhere;
+  color: #64716c;
+}
+.audit-call {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  border-bottom: 1px solid #e6eae8;
+  padding: 12px 0;
+  color: #64716c;
+}
+.evidence-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: #17211d66;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+}
+.evidence-dialog {
+  background: #fff;
+  border-radius: 12px;
+  padding: 24px;
+  width: min(760px, 100%);
+  max-height: 85dvh;
+  overflow: auto;
+}
+.evidence-dialog blockquote {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  border-left: 3px solid #0c5b3d;
+  padding: 15px;
+  margin: 18px 0;
+  background: #f7f9f8;
+  font-size: 13px;
+  line-height: 1.9;
+}
+@media (max-width: 700px) {
+  .saved-reports {
+    padding: 16px;
+  }
+  .saved-reports .section-heading {
+    flex-wrap: wrap;
+  }
+}
+
 .skills-page {
   max-width: 1460px;
   padding: 30px 36px 42px;

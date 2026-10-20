@@ -14,6 +14,11 @@ dependencies = [
   "argon2-cffi>=25,<26",
   "email-validator>=2.2,<3",
   "pyyaml>=6.0.2,<7",
+  "langgraph>=1.0,<2",
+  "langgraph-checkpoint-postgres>=3,<4",
+  "httpx>=0.28,<1",
+  "psycopg-pool>=3.2,<4",
+  "jsonschema>=4.25,<5",
 ]
 
 [dependency-groups]
@@ -25,6 +30,7 @@ dev = [
     "mypy>=1.15,<2",
     "httpx2>=2.15.1",
     "types-pyyaml>=6,<7",
+    "types-jsonschema>=4.25,<5",
 ]
 
 [tool.pytest.ini_options]

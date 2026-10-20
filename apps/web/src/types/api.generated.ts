@@ -269,10 +269,107 @@ export interface paths {
     patch: operations['config_api_v1_skills__skill_id__config_patch'];
     trace?: never;
   };
+  '/api/v1/research/{project_id}/reports': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** List Reports */
+    get: operations['list_reports_api_v1_research__project_id__reports_get'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/reports/{report_id}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Report */
+    get: operations['report_api_v1_reports__report_id__get'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/evidence/{evidence_id}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Evidence */
+    get: operations['evidence_api_v1_evidence__evidence_id__get'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
 }
 export type webhooks = Record<string, never>;
 export interface components {
   schemas: {
+    /** ArtifactView */
+    ArtifactView: {
+      /** Skill Id */
+      skill_id: string;
+      /** Skill Version */
+      skill_version: string;
+      /** Revision */
+      revision: number;
+      /** Status */
+      status: string;
+      /** Digest */
+      digest: string;
+      /** Payload */
+      payload: {
+        [key: string]: unknown;
+      };
+    };
+    /** AuditView */
+    AuditView: {
+      /** Kind */
+      kind: string;
+      /** Name */
+      name: string;
+      /** Prompt Version */
+      prompt_version: string | null;
+      /** Model */
+      model: string | null;
+      /** Usage Json */
+      usage_json: {
+        [key: string]: unknown;
+      } | null;
+      /** Status */
+      status: string;
+      /** Error Code */
+      error_code: string | null;
+      /**
+       * Started At
+       * Format: date-time
+       */
+      started_at: string;
+      /**
+       * Ended At
+       * Format: date-time
+       */
+      ended_at: string;
+    };
     /** ConfigUpdate */
     ConfigUpdate: {
       /** Enabled */
@@ -326,6 +423,50 @@ export interface components {
     ErrorResponse: {
       error: components['schemas']['ErrorDetail'];
     };
+    /** EvidenceRead */
+    EvidenceRead: {
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /**
+       * Source Id
+       * Format: uuid
+       */
+      source_id: string;
+      /** Excerpt */
+      excerpt: string;
+      /** Locator */
+      locator: {
+        [key: string]: unknown;
+      };
+      /**
+       * Collected At
+       * Format: date-time
+       */
+      collected_at: string;
+      /** Validity Status */
+      validity_status: string;
+      /** Url */
+      url: string;
+      /** Title */
+      title: string;
+      /** Origin */
+      origin: string;
+      /** Permission Note */
+      permission_note: string;
+    };
+    /** EvidenceResponse */
+    EvidenceResponse: {
+      /**
+       * Schema Version
+       * @default 1
+       * @constant
+       */
+      schema_version: 1;
+      data: components['schemas']['EvidenceRead'];
+    };
     /** Identity */
     Identity: {
       /**
@@ -336,6 +477,40 @@ export interface components {
       schema_version: 1;
       user: components['schemas']['UserView'];
       tenant: components['schemas']['TenantView'];
+    };
+    /** Issue */
+    Issue: {
+      /**
+       * Type
+       * @enum {string}
+       */
+      type:
+        | 'missing_evidence'
+        | 'unsupported_claim'
+        | 'contradiction'
+        | 'schema_error'
+        | 'outdated_source';
+      /**
+       * Severity
+       * @default error
+       * @enum {string}
+       */
+      severity: 'error' | 'warning';
+      /**
+       * Target
+       * @enum {string}
+       */
+      target: 'collector' | 'analyst' | 'writer';
+      /** Skill Id */
+      skill_id?: string | null;
+      /** Claim Id */
+      claim_id?: string | null;
+      /** Evidence Id */
+      evidence_id?: string | null;
+      /** Description */
+      description: string;
+      /** Repair Request */
+      repair_request: string;
     };
     /** LivenessResponse */
     LivenessResponse: {
@@ -541,6 +716,143 @@ export interface components {
       /** Display Name */
       display_name: string;
     };
+    /** ReportClaim */
+    ReportClaim: {
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /** Statement */
+      statement: string;
+      /** Status */
+      status: string;
+      /** Evidence Ids */
+      evidence_ids: string[];
+    };
+    /** ReportDraft */
+    ReportDraft: {
+      /**
+       * Schema Version
+       * @default 1
+       * @constant
+       */
+      schema_version: 1;
+      /** Title */
+      title: string;
+      /**
+       * Status
+       * @enum {string}
+       */
+      status: 'partial' | 'complete' | 'needs_review';
+      /** Sections */
+      sections: components['schemas']['ReportSection'][];
+      /** Limitations */
+      limitations: string[];
+      /** Sentiment Summary */
+      sentiment_summary: {
+        [key: string]: unknown;
+      };
+    };
+    /** ReportList */
+    ReportList: {
+      /**
+       * Schema Version
+       * @default 1
+       * @constant
+       */
+      schema_version: 1;
+      /** Data */
+      data: components['schemas']['ReportSummary'][];
+    };
+    /** ReportRead */
+    ReportRead: {
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /**
+       * Run Id
+       * Format: uuid
+       */
+      run_id: string;
+      /**
+       * Project Id
+       * Format: uuid
+       */
+      project_id: string;
+      /** Title */
+      title: string;
+      /** Current Version */
+      current_version: number;
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
+      content: components['schemas']['ReportDraft'];
+      /** Review History */
+      review_history: components['schemas']['ReviewResult'][];
+      /** Artifact History */
+      artifact_history: components['schemas']['ArtifactView'][];
+      /** Calls */
+      calls: components['schemas']['AuditView'][];
+    };
+    /** ReportResponse */
+    ReportResponse: {
+      /**
+       * Schema Version
+       * @default 1
+       * @constant
+       */
+      schema_version: 1;
+      data: components['schemas']['ReportRead'];
+    };
+    /** ReportSection */
+    ReportSection: {
+      /** Skill Id */
+      skill_id: string;
+      /** Heading */
+      heading: string;
+      /** Status */
+      status: string;
+      /** Claims */
+      claims: components['schemas']['ReportClaim'][];
+      /** Analysis */
+      analysis: {
+        [key: string]: unknown;
+      };
+      /** Limitations */
+      limitations: string[];
+    };
+    /** ReportSummary */
+    ReportSummary: {
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /**
+       * Run Id
+       * Format: uuid
+       */
+      run_id: string;
+      /**
+       * Project Id
+       * Format: uuid
+       */
+      project_id: string;
+      /** Title */
+      title: string;
+      /** Current Version */
+      current_version: number;
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
+    };
     /** Resolution */
     Resolution: {
       /**
@@ -566,6 +878,30 @@ export interface components {
        */
       schema_version: 1;
       data: components['schemas']['Resolution'];
+    };
+    /** ReviewResult */
+    ReviewResult: {
+      /** Passed */
+      passed: boolean;
+      /** Issues */
+      issues: components['schemas']['Issue'][];
+      /**
+       * Schema Version
+       * @default 1
+       * @constant
+       */
+      schema_version: 1;
+      /** Next Target */
+      next_target: ('collector' | 'analyst' | 'writer') | null;
+      /** Review Count */
+      review_count: number;
+      /**
+       * Status
+       * @enum {string}
+       */
+      status: 'passed' | 'repair' | 'needs_review';
+      /** Before Digest */
+      before_digest: string;
     };
     /** Selection */
     Selection: {
@@ -2289,6 +2625,288 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['SkillResult'];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  list_reports_api_v1_research__project_id__reports_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        project_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ReportList'];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  report_api_v1_reports__report_id__get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        report_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ReportResponse'];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  evidence_api_v1_evidence__evidence_id__get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        evidence_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['EvidenceResponse'];
         };
       };
       /** @description Unauthorized */

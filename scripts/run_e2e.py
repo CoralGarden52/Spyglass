@@ -44,6 +44,11 @@ def main() -> int:
         )
         if migration.returncode:
             return migration.returncode
+        seed = subprocess.run(
+            [sys.executable, "tests/e2e/seed_report.py"], cwd=ROOT, env=environment, check=False
+        )
+        if seed.returncode:
+            return seed.returncode
         npm = shutil.which("npm.cmd" if sys.platform == "win32" else "npm")
         if npm is None:
             raise RuntimeError("npm is required")

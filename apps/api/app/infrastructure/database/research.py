@@ -93,6 +93,7 @@ class Run(Base):
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     error_code: Mapped[str | None] = mapped_column(String(80))
     request_hash: Mapped[str | None] = mapped_column(String(64))
+    request_json: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
     __table_args__ = (
         UniqueConstraint("tenant_id", "id"),
         UniqueConstraint("tenant_id", "thread_id", "id", name="uq_run_tenant_thread_id"),

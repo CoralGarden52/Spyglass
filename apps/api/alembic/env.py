@@ -4,7 +4,7 @@ from sqlalchemy import create_engine
 
 from alembic import context
 from app.core.config import Settings
-from app.infrastructure.database import accounts, research, skills  # noqa: F401
+from app.infrastructure.database import accounts, knowledge, research, skills  # noqa: F401
 from app.infrastructure.database.base import Base
 
 config = context.config

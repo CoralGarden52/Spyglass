@@ -4,19 +4,19 @@
 
 ## 1. 技术栈与架构原则
 
-| 层 | 选择 | 说明 |
-|---|---|---|
-| Web | React 19、TypeScript、Vite、TailwindCSS、Zustand、React Router | 前端应用 |
-| UI 辅助 | ReactFlow、ECharts（可按需使用 D3）、Framer Motion、Lucide | 流程图/报告图表/动效/图标 |
-| 数据请求 | TanStack Query + OpenAPI 生成的 TS 类型 | 服务端状态与类型同步；Zustand 管本地 UI 状态 |
-| HTTP | FastAPI + Pydantic v2 | 认证、租户、业务 API、SSE |
-| Agent | LangGraph Python | Agent Graph、Checkpoint、状态和中断 |
-| DB | PostgreSQL + pgvector、SQLAlchemy 2、Alembic | 业务数据与向量；迁移显式管理 |
-| Redis | Redis | 缓存/限流；后续可接可靠队列和事件传输 |
-| AI Provider | DeepSeek API，经自有适配层 | 接口隔离、可替换、记录模型版本 |
-| Search Provider | Bocha API，经 Tool 适配层 | 搜索结果规范化、去重、来源记录 |
-| 测试 | pytest、Vitest、React Testing Library、Playwright | 单元、集成与端到端 |
-| 部署 | Docker Compose，明确镜像版本和迁移指令 | MVP 单实例部署；未来拆分 API/Worker |
+| 层              | 选择                                                           | 说明                                         |
+| --------------- | -------------------------------------------------------------- | -------------------------------------------- |
+| Web             | React 19、TypeScript、Vite、TailwindCSS、Zustand、React Router | 前端应用                                     |
+| UI 辅助         | ReactFlow、ECharts（可按需使用 D3）、Framer Motion、Lucide     | 流程图/报告图表/动效/图标                    |
+| 数据请求        | TanStack Query + OpenAPI 生成的 TS 类型                        | 服务端状态与类型同步；Zustand 管本地 UI 状态 |
+| HTTP            | FastAPI + Pydantic v2                                          | 认证、租户、业务 API、SSE                    |
+| Agent           | LangGraph Python                                               | Agent Graph、Checkpoint、状态和中断          |
+| DB              | PostgreSQL + pgvector、SQLAlchemy 2、Alembic                   | 业务数据与向量；迁移显式管理                 |
+| Redis           | Redis                                                          | 缓存/限流；后续可接可靠队列和事件传输        |
+| AI Provider     | DeepSeek API，经自有适配层                                     | 接口隔离、可替换、记录模型版本               |
+| Search Provider | Bocha API，经 Tool 适配层                                      | 搜索结果规范化、去重、来源记录               |
+| 测试            | pytest、Vitest、React Testing Library、Playwright              | 单元、集成与端到端                           |
+| 部署            | Docker Compose，明确镜像版本和迁移指令                         | MVP 单实例部署；未来拆分 API/Worker          |
 
 架构原则：模块化单体；业务 API 不直接承载 Graph 编排细节；Graph 不直接处理 HTTP/认证；Model/Tool/Storage 通过接口隔离；每个可追踪执行具有不可混用的 `tenant_id`、`user_id`、`project_id`、`thread_id` 和 `run_id`。
 
@@ -122,7 +122,7 @@ config_schema: SentimentConfig
 dimensions: [整体四分类, 方面级情感, 去重, 样本与偏差]
 source_priorities: [具有公开定位的真实评论]
 review_aspects: [功能, 性能, 价格, 易用性]
-recommended_advanced: {quick: [], standard: [], deep: []}
+recommended_advanced: { quick: [], standard: [], deep: [] }
 ```
 
 Registry 验证：唯一 ID、SemVer/版本、文件合法性、输入输出 Schema、声明工具是否在白名单、依赖是否可解析、必选 Skill 禁用保护。`SKILL.md` 包含专业指导与来源/输出约束，不包含真实密钥、不授予系统权限。加载顺序为元数据发现 → 按需读取内容 → 审核版本 → 注入相关 Agent 上下文。
@@ -149,15 +149,15 @@ scenario context + normalized evidence
 
 ### 5.1 有责任边界的节点
 
-| 节点 | 责任 | 结构化输出 |
-|---|---|---|
-| Planner | 解读需求、确定竞品、范围、深度、任务计划 | `ResearchPlan` |
-| SkillResolver | 固定场景/四核心/增强 Skill 及其版本 | `ResolvedSkills` |
-| Collector Agent | 搜索、读取合规资料、去重、采集并记录来源 | `Source[]`, `Evidence[]`、采集缺口 |
-| Normalizer | 映射功能树、套餐、评价等结构化 Schema | `CompetitorProfile[]`、`ReviewSample[]` |
-| Analyst Agent | 按 Skill 生成三项基础分析、SWOT 和增强结果 | `AnalysisBundle` / `Claim[]` |
-| Writer Agent | 报告大纲、章节、表格、图表数据、Claim 映射 | `ReportDraft` |
-| Reviewer Agent | Schema、真实性、来源关联、矛盾、遗漏与逻辑检查 | `ReviewResult` |
+| 节点            | 责任                                           | 结构化输出                              |
+| --------------- | ---------------------------------------------- | --------------------------------------- |
+| Planner         | 解读需求、确定竞品、范围、深度、任务计划       | `ResearchPlan`                          |
+| SkillResolver   | 固定场景/四核心/增强 Skill 及其版本            | `ResolvedSkills`                        |
+| Collector Agent | 搜索、读取合规资料、去重、采集并记录来源       | `Source[]`, `Evidence[]`、采集缺口      |
+| Normalizer      | 映射功能树、套餐、评价等结构化 Schema          | `CompetitorProfile[]`、`ReviewSample[]` |
+| Analyst Agent   | 按 Skill 生成三项基础分析、SWOT 和增强结果     | `AnalysisBundle` / `Claim[]`            |
+| Writer Agent    | 报告大纲、章节、表格、图表数据、Claim 映射     | `ReportDraft`                           |
+| Reviewer Agent  | Schema、真实性、来源关联、矛盾、遗漏与逻辑检查 | `ReviewResult`                          |
 
 固定为四个专业 Agent（Collector、Analyst、Writer、Reviewer）；Planner/Resolver/Normalizer 是职责明确的编排或转换节点，不额外宣传成多个自治 Agent。
 
@@ -232,8 +232,18 @@ class ResearchState(TypedDict):
 {
   "overall_sentiment": "mixed",
   "aspects": [
-    {"aspect_key": "code_completion", "opinion_span": "补全效果好", "sentiment": "positive", "evidence_id": "ev-example-1"},
-    {"aspect_key": "pricing", "opinion_span": "价格偏高", "sentiment": "negative", "evidence_id": "ev-example-1"}
+    {
+      "aspect_key": "code_completion",
+      "opinion_span": "补全效果好",
+      "sentiment": "positive",
+      "evidence_id": "ev-example-1"
+    },
+    {
+      "aspect_key": "pricing",
+      "opinion_span": "价格偏高",
+      "sentiment": "negative",
+      "evidence_id": "ev-example-1"
+    }
   ]
 }
 ```
@@ -248,32 +258,32 @@ class ResearchState(TypedDict):
 
 MVP 至少建立：
 
-| 表 | 核心字段/关系 |
-|---|---|
-| `users` | id、email(unique)、password_hash、status、created_at |
-| `tenants` | id、name、type、created_at |
-| `tenant_members` | tenant_id + user_id(unique)、role、status |
-| `research_projects` | id、tenant_id、created_by、title、mode、scenario_skill_id、status、created_at |
-| `threads` | id、tenant_id、project_id、created_by、title、created_at |
-| `messages` | id、tenant_id、thread_id、run_id?、role、content_json、created_at、sequence |
-| `runs` | id、tenant_id、project_id、thread_id、user_id、status、skills_snapshot_json、requested_at、started_at?、finished_at?、error_code?、usage_json、idempotency_key、request_hash? |
-| `run_events` | id、tenant_id、run_id、seq、type、schema_version、payload_json、created_at；unique(run_id,seq) |
-| `run_steps` | id、tenant_id、run_id、node、status、started_at、ended_at?、usage_json、artifact_refs |
-| `tool_calls` | id、tenant_id、run_id、step_id、tool_name、args_redacted_json、result_ref、status、idempotency_key、usage_json |
-| `skills` | (id,version) 主键、kind、manifest_checksum、metadata_json、instructions、is_system_required；定义不可更新/删除 |
-| `skill_configs` | (tenant_id,skill_id) 主键、skill_version、enabled、config_json、revision、updated_at；禁止关闭四基础 |
-| `skill_config_mutations` | (tenant_id,user_id,idempotency_key) 主键、request_hash、response_json、created_at；租户成员复合外键 |
-| `competitors` | id、tenant_id、canonical_name、website?、profile_json、updated_at |
-| `project_competitors` | project_id、competitor_id、tenant_id |
-| `sources` | id、tenant_id、source_type、url?、title、published_at?、collected_at、content_hash、content_ref、metadata_json |
-| `evidence` | id、tenant_id、source_id、excerpt、locator_json、validity_status、embedding?、created_at |
-| `claims` | id、tenant_id、run_id、competitor_id?、statement、type、status、created_at |
-| `claim_evidence` | tenant_id、claim_id、evidence_id、relation |
-| `review_samples` | id、tenant_id、competitor_id、source_id、evidence_id、text_excerpt、sentiment、aspects_json、fingerprint、published_at? |
-| `analysis_artifacts` | id、tenant_id、run_id、skill_id、skill_version、status、content_json、source_refs_json |
-| `reports` | id、tenant_id、project_id、run_id、title、status、current_version_id? |
-| `report_versions` | id、tenant_id、report_id、version、content_json、editor_type、editor_id?、created_at |
-| `assets` | id、tenant_id、owner_id、filename、media_type、size、storage_ref、created_at |
+| 表                       | 核心字段/关系                                                                                                                                                                 |
+| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `users`                  | id、email(unique)、password_hash、status、created_at                                                                                                                          |
+| `tenants`                | id、name、type、created_at                                                                                                                                                    |
+| `tenant_members`         | tenant_id + user_id(unique)、role、status                                                                                                                                     |
+| `research_projects`      | id、tenant_id、created_by、title、mode、scenario_skill_id、status、created_at                                                                                                 |
+| `threads`                | id、tenant_id、project_id、created_by、title、created_at                                                                                                                      |
+| `messages`               | id、tenant_id、thread_id、run_id?、role、content_json、created_at、sequence                                                                                                   |
+| `runs`                   | id、tenant_id、project_id、thread_id、user_id、status、skills_snapshot_json、requested_at、started_at?、finished_at?、error_code?、usage_json、idempotency_key、request_hash? |
+| `run_events`             | id、tenant_id、run_id、seq、type、schema_version、payload_json、created_at；unique(run_id,seq)                                                                                |
+| `run_steps`              | id、tenant_id、run_id、node、status、started_at、ended_at?、usage_json、artifact_refs                                                                                         |
+| `tool_calls`             | id、tenant_id、run_id、step_id、tool_name、args_redacted_json、result_ref、status、idempotency_key、usage_json                                                                |
+| `skills`                 | (id,version) 主键、kind、manifest_checksum、metadata_json、instructions、is_system_required；定义不可更新/删除                                                                |
+| `skill_configs`          | (tenant_id,skill_id) 主键、skill_version、enabled、config_json、revision、updated_at；禁止关闭四基础                                                                          |
+| `skill_config_mutations` | (tenant_id,user_id,idempotency_key) 主键、request_hash、response_json、created_at；租户成员复合外键                                                                           |
+| `competitors`            | id、tenant_id、canonical_name、website?、profile_json、updated_at                                                                                                             |
+| `project_competitors`    | project_id、competitor_id、tenant_id                                                                                                                                          |
+| `sources`                | id、tenant_id、source_type、url?、title、published_at?、collected_at、content_hash、content_ref、metadata_json                                                                |
+| `evidence`               | id、tenant_id、source_id、excerpt、locator_json、validity_status、embedding?、created_at                                                                                      |
+| `claims`                 | id、tenant_id、run_id、competitor_id?、statement、type、status、created_at                                                                                                    |
+| `claim_evidence`         | tenant_id、claim_id、evidence_id、relation                                                                                                                                    |
+| `review_samples`         | id、tenant_id、competitor_id、source_id、evidence_id、text_excerpt、sentiment、aspects_json、fingerprint、published_at?                                                       |
+| `analysis_artifacts`     | id、tenant_id、run_id、skill_id、skill_version、status、content_json、source_refs_json                                                                                        |
+| `reports`                | id、tenant_id、project_id、run_id、title、status、current_version_id?                                                                                                         |
+| `report_versions`        | id、tenant_id、report_id、version、content_json、editor_type、editor_id?、created_at                                                                                          |
+| `assets`                 | id、tenant_id、owner_id、filename、media_type、size、storage_ref、created_at                                                                                                  |
 
 - `tenant_id` 在高频业务表中显式存在，并用联合键/仓储校验避免跨租户外键链接；按 `(tenant_id, created_at)`、`(tenant_id, thread_id, sequence)`、`(tenant_id, run_id, seq)` 建索引。
 - `runs` 对活跃状态建立与实现一致的单 Thread 并发约束；同一用户/Thread/幂等键重复请求去重。
@@ -310,7 +320,7 @@ MVP 实现有界、进程内 `LocalRunExecutor`；不能把 FastAPI `BackgroundT
   "thread_id": "thread-example",
   "type": "evidence.added",
   "timestamp": "2026-10-20T00:00:00Z",
-  "payload": {"evidence_id": "ev-example", "source_id": "src-example"}
+  "payload": { "evidence_id": "ev-example", "source_id": "src-example" }
 }
 ```
 
@@ -323,40 +333,40 @@ SSE 使用 `GET /runs/{id}/events`，Run 创建使用单独 POST，天然适配�
 - 基础前缀 `/api/v1`；JSON 统一 `{data, meta?}` 或明确的 Pydantic 响应 Schema；错误统一 `{error:{code,message,details?,request_id}}`；支持分页和权限检查；API 按 OpenAPI 生成前端 TS 类型。
 - 以下路由为**Spyglass 应用层拟定协议**，不是 LangGraph 框架原生端点。
 
-| Method | Endpoint | 说明 |
-|---|---|---|
-| POST | `/auth/register` | 注册；创建默认个人 Tenant |
-| POST | `/auth/login` | 登录；设置安全会话 |
-| POST | `/auth/logout` | 登出；注销会话 |
-| GET | `/users/me` | 当前账户与有效工作空间 |
-| GET | `/skills` | 按 kind 查询、可用/必选/版本 |
-| GET | `/skills/{skill_id}` | Skill 元信息/配置/说明 |
-| PATCH | `/skills/{skill_id}/config` | 有权限的开关/配置；core 不可关闭 |
-| POST | `/research` | 创建 Project |
-| GET | `/research` | 列表、搜索、状态/分页 |
-| GET/PATCH/DELETE | `/research/{project_id}` | 详情/更新/软删除或归档 |
-| POST | `/threads` | 为 Project 创建 Thread |
-| GET | `/threads/{thread_id}` | 详情 |
-| GET | `/threads/{thread_id}/messages` | 消息历史 |
-| POST | `/threads/{thread_id}/runs` | 创建 Run，`Idempotency-Key`，返回 run_id |
-| GET | `/runs` | Run 列表/筛选 |
-| GET | `/runs/{run_id}` | Run 状态、统计与关联 |
-| GET (SSE) | `/runs/{run_id}/events` | `after_seq` / Last-Event-ID，回放 + 实时 |
-| POST | `/runs/{run_id}/cancel` | 显式请求取消 |
-| POST | `/runs/{run_id}/resume` | 仅允许有有效 pending interrupt 的恢复 |
-| POST | `/runs/{run_id}/scope-changes` | 记录运行中范围变更请求 |
-| GET | `/competitors` | 租户内竞品档案列表 |
-| GET | `/competitors/{competitor_id}` | 概况/能力/套餐/评价/来源 |
-| GET | `/evidence/{evidence_id}` | 查看证据及其可访问来源 |
-| GET | `/intelligence` | 真实竞品动态、筛选与分页 |
-| POST | `/intelligence/refresh` | 对授权竞品触发主动采集或更新 |
-| GET | `/intelligence/summary` | 基于真实记录的指标 |
-| GET | `/reports` | 报告列表 |
-| GET | `/reports/{report_id}` | 当前报告/关联数据 |
-| GET | `/reports/{report_id}/versions` | 版本历史 |
-| PATCH | `/reports/{report_id}` | 乐观版本校验后创建人工编辑版本 |
-| POST | `/reports/{report_id}/export` | MVP 支持 PDF；其他格式明确拒绝 |
-| POST | `/assets` | 校验上传格式/大小/归属并返回资产 ID |
+| Method           | Endpoint                        | 说明                                     |
+| ---------------- | ------------------------------- | ---------------------------------------- |
+| POST             | `/auth/register`                | 注册；创建默认个人 Tenant                |
+| POST             | `/auth/login`                   | 登录；设置安全会话                       |
+| POST             | `/auth/logout`                  | 登出；注销会话                           |
+| GET              | `/users/me`                     | 当前账户与有效工作空间                   |
+| GET              | `/skills`                       | 按 kind 查询、可用/必选/版本             |
+| GET              | `/skills/{skill_id}`            | Skill 元信息/配置/说明                   |
+| PATCH            | `/skills/{skill_id}/config`     | 有权限的开关/配置；core 不可关闭         |
+| POST             | `/research`                     | 创建 Project                             |
+| GET              | `/research`                     | 列表、搜索、状态/分页                    |
+| GET/PATCH/DELETE | `/research/{project_id}`        | 详情/更新/软删除或归档                   |
+| POST             | `/threads`                      | 为 Project 创建 Thread                   |
+| GET              | `/threads/{thread_id}`          | 详情                                     |
+| GET              | `/threads/{thread_id}/messages` | 消息历史                                 |
+| POST             | `/threads/{thread_id}/runs`     | 创建 Run，`Idempotency-Key`，返回 run_id |
+| GET              | `/runs`                         | Run 列表/筛选                            |
+| GET              | `/runs/{run_id}`                | Run 状态、统计与关联                     |
+| GET (SSE)        | `/runs/{run_id}/events`         | `after_seq` / Last-Event-ID，回放 + 实时 |
+| POST             | `/runs/{run_id}/cancel`         | 显式请求取消                             |
+| POST             | `/runs/{run_id}/resume`         | 仅允许有有效 pending interrupt 的恢复    |
+| POST             | `/runs/{run_id}/scope-changes`  | 记录运行中范围变更请求                   |
+| GET              | `/competitors`                  | 租户内竞品档案列表                       |
+| GET              | `/competitors/{competitor_id}`  | 概况/能力/套餐/评价/来源                 |
+| GET              | `/evidence/{evidence_id}`       | 查看证据及其可访问来源                   |
+| GET              | `/intelligence`                 | 真实竞品动态、筛选与分页                 |
+| POST             | `/intelligence/refresh`         | 对授权竞品触发主动采集或更新             |
+| GET              | `/intelligence/summary`         | 基于真实记录的指标                       |
+| GET              | `/reports`                      | 报告列表                                 |
+| GET              | `/reports/{report_id}`          | 当前报告/关联数据                        |
+| GET              | `/reports/{report_id}/versions` | 版本历史                                 |
+| PATCH            | `/reports/{report_id}`          | 乐观版本校验后创建人工编辑版本           |
+| POST             | `/reports/{report_id}/export`   | MVP 支持 PDF；其他格式明确拒绝           |
+| POST             | `/assets`                       | 校验上传格式/大小/归属并返回资产 ID      |
 
 ### 9.1 创建 Run 请求示例
 
@@ -421,3 +431,16 @@ MVP Docker Compose 服务可为 `web`、`api`、`postgres`（安装 pgvector）�
 - Project/Thread 创建要求 `Idempotency-Key`（8–128 个字母、数字或 `_.:-`），请求内容摘要与实体同时保存；同键不同内容 409。Project 列表接受 q/limit（1–100）/offset（0–10000），返回 `{schema_version,data,meta:{total,limit,offset}}`。读取单项返回 `{schema_version,data}`。消息历史查询真实 messages 表；空会话返回空数组，不生成示例消息。
 - Slice 1 新增业务迁移 `0002_auth_workspace`：users、tenants、tenant_members、sessions、research_projects、threads、runs、messages。组合外键/唯一约束与活动 Run 部分索引已在真实数据库测试；Run 执行与事件在后续切片实现，LangGraph Checkpointer 尚未初始化。
 - OpenAPI 为运行代码生成，TypeScript 类型通过 `npm run api:types` 同步；具体当前验收结果记录在 `docs/slices/`，此补充不改变 Slice 2–6 的原有验收要求。
+
+## 15. Slice 3 已落地 Runtime 与只读结果协议
+
+- `agent/runtime` 为真实 LangGraph StateGraph；Planner → Resolver → Collector → Normalizer → 三项并发基础分析 → 汇合 → SWOT/无相互依赖增强项并发 → 战略建议（如选中）→ Writer → Reviewer。依赖通过独立 State 输出键和多源汇合边实现，未引入第二个 Agent 编排核心。
+- 四专业角色分别调用模型，交接内容经 Pydantic/冻结 JSON Schema 验证。运行时读取数据库 `(id,version,checksum)` 对应的 Skill 指导、输入/输出契约和工具许可，不重读可变文件替换历史版本。跨字段事实安全规则对历史版本也生效：有来源状态不可缺证据，已知价格必须有币种和单位；当前冻结 Schema 与注册类型相同时同时执行 Pydantic 业务校验。
+- Collector 生成结构化检索计划、实际调用 Bocha，并有限读取搜索结果网页。Source/Evidence 明确区分 search_snippet 和 web_page，保留 URL/定位/采集时间；网页工具逐跳验证 DNS/IP，固定连接到已验证 IP、保留 Host/TLS SNI，检查目标 robots、大小、类型及超时。robots 本身重定向目前拒绝访问；不把拒绝访问当作产品不支持。
+- Normalizer 只保存来源片段中的逐字评论；同一 Evidence 可对应多个样本，通过服务器 fingerprint 区分，并验证方面 opinion_span 属于对应引用。报告统计来自最新 sentiment artifact，旧修订分类不参与新版本聚合；同时保留真实样本总数、已分类/未分类数、四分类和独立方面分母。未找到合法评论时保持零样本和不足说明。
+- 模型适配支持兼容 Chat Completions 的 JSON/SSE、显式 stream=true、真实 usage、响应大小限制与脱敏错误；全局 semaphore 计入排队时间的单调用超时。未知 Token 为 null。调用审计仅保存角色/工具、Prompt 版本、输入/输出摘要哈希、模型/usage、起止时间和错误码，不记录密钥或隐藏推理。
+- `0004_research_runtime` 建立 research_plans、sources、evidence、competitors、review_samples、analysis_artifacts、claims、claim_evidence、reports、report_versions、runtime_calls、quality_reviews，并为 runs 增加 request_json。所有私有实体通过 Tenant/Run 外键及仓储过滤关联；当前 competitors 是本轮有来源快照，完整可复用知识档案留在 Slice 5。
+- `0005_langgraph_checkpoint` 用 SDK 初始化独立 langgraph schema。含并发索引的 SDK setup 只在部署迁移中执行；必须在线升级，`--sql` 明确报错且不会连接数据库。每 Run 使用已建表的 PostgreSQL Checkpointer，避免运行时并发 setup 死锁。业务 ORM 不管理 SDK 表。State 保存引用而非网页正文；当前内部 checkpoint 读取定位 Thread 最新 Run，历史业务报告另行版本化持久保存。
+- `LocalRunExecutor` 有界管理任务，DB 原子 claim 防止重复执行。取消、初始化错误、清理错误均尝试持久化明确终态；Run 总预算后只执行有界无模型清理。它不宣称具备进程崩溃后的分布式恢复/可靠队列；公开恢复和重启遗留任务处理在后续切片继续完善。
+- Reviewer 合并确定性引用/Schema 检查与模型独立审查，按 target 路由真实节点，保存每轮问题和内容摘要；摘要排除新分配的 Claim ID，仅 ID 变化不能当作返工成功。最多两次返工，无变化或仍不合格进入 needs_review。Writer 只能选本轮已有 Claim，事实正文由持久化 Claim/分析产物构建。
+- 新增认证只读 API：GET `/research/{project_id}/reports`、GET `/reports/{report_id}`、GET `/evidence/{evidence_id}`；路径为 UUID，统一错误和生成的 TS 类型保持同步。报告返回当前结构化版本、质量历史、真实调用和产物修订，项目详情可查看/刷新和打开证据。此为当前最小结果读回，不提前宣布 Slice 4 的 Run 创建/SSE/实时双栏或 Slice 5 的完整报告中心完成。

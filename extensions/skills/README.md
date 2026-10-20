@@ -6,4 +6,4 @@ Slice 2 已注册 13 个独立版本化 Skill：6 scenario、4 core、3 advanced
 
 场景每次单选；四项基础不可关闭；增强项支持手选和清单规则选择。`recommended_advanced` 目前按场景和 quick/standard/deep 选择，没有调用 LLM Planner。租户配置更换版本后须在技能中心确认保存，才能参与新的计划；旧配置不兼容时界面明确展示待确认的新默认值，不自动覆盖数据库。
 
-本切片完成发现、校验、配置、解析及内部 Run 准备事务；尚未执行调研或生成分析产物。Slice 3 将在真实 LangGraph 中按选中版本注入专业指导并实施工具许可检查，不得仅凭注册清单宣称模型执行已完成。
+Slice 3 已在真实 LangGraph 中读取并校验 Run 冻结的数据库版本，注入选中指导与 Schema，按工具白名单执行。分析产物和修订实际落库，Reviewer 有 Collector/Analyst/Writer 返工边；产品、价格、用户评价并发，汇合后按依赖执行 SWOT/增强项。自动增强选择当前仍标明 manifest_rules，Planner 负责研究范围，不宣称其已实现智能技能匹配。公共 Run/SSE 入口与完整前端执行链路留在 Slice 4。

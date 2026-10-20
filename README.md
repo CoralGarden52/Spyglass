@@ -2,7 +2,9 @@
 
 竞品分析 Agent 工作台。产品、技术、视觉和任务顺序分别以根目录 `PRD.md`、`TECHNICAL.md`、`DESIGN.md`、`prompt.md` 为准。
 
-当前范围：**Slice 0–2**。Web → FastAPI → PostgreSQL/pgvector、Redis 实际连通；已实现认证、默认个人 Tenant、持久会话与隔离的 Project/Thread API，以及 13 个独立版本化 Skill 的发现、校验、租户配置和计划解析。技能中心展示真实分类、版本、详情与配置；工作台支持六场景单选、四项基础只读必选、三项增强手动/规则自动选择及真实计划预览。内部 Run 准备事务会冻结技能版本快照，但尚无公共 Run 执行 API。LangGraph、报告生成和导出将在后续切片实现，当前不能从输入生成报告。
+当前范围：**Slice 0–3**。认证、个人 Tenant、项目/Thread、13 个版本化 Skill 已实现；现已接入真实 LangGraph 研究图、DeepSeek 兼容模型/Bocha、受限网页读取、证据与结构化报告持久化、Reviewer 定向返工及 PostgreSQL Checkpoint。产品/定价/用户评价并发，SWOT 和无相互依赖的增强项并发；模型/Run 有超时和容量限制。项目详情可读取已保存报告、证据、产物修订及真实调用记录。
+
+**公共 Run 创建、SSE 和前端输入到执行入口仍属于 Slice 4**；当前开始分析保持禁用，不把内部执行器当作已完成前端研究链路。自动增强选择仍是明确标识的清单规则，真实 Planner 当前负责竞品与研究范围。PDF、完整报告/竞品/Trace 中心等仍待后续切片。
 
 ## 本地开发（Windows PowerShell / Linux）
 
@@ -87,7 +89,7 @@ npm run test:e2e
 - 所有写请求要求准确匹配白名单的 Origin；已认证写请求还需从 sg_csrf Cookie 读取并通过 X-CSRF-Token 提交，服务器校验绑定会话的摘要。登录/注册有 Redis 原子计数限流（默认每来源 IP/接口 5 次/60 秒）；Redis 不可用时认证写入失败关闭，不降级成无限尝试。外部 API 客户端也需显式设置可信 Origin。
 - 创建 Project/Thread 必须带 8–128 字符 Idempotency-Key；同键同内容返回原实体，同键不同内容返回 409。鉴权接口依赖邮箱唯一约束和会话撤销，不将注册或登出重试伪装成新业务实体。
 
-当前迁移 `0003_skill_registry` 在认证/研究八表基础上新增 skills、skill_configs、skill_config_mutations 和 Run 请求指纹。复合外键阻止跨租户关联；Run 活动状态部分唯一索引保证每 Thread 最多一个活动 Run。技能版本由数据库触发器禁止 UPDATE/DELETE。完整团队管理、邮箱验证、密码重置尚未实现。
+当前迁移 head 为 `0005_langgraph_checkpoint`。0004 新增实际来源、证据、竞品快照、评论、分析产物、Claim/ClaimEvidence、报告版本、质量审查及调用审计表，Run 保存请求；0005 在独立 langgraph schema 初始化 SDK 检查点迁移。SDK 的并发索引初始化只在部署迁移时执行，不在并行 Run 内建表。0005 必须在线迁移，明确拒绝 `--sql` 离线生成，拒绝前不会连接数据库。复合外键阻止跨租户关联；Run 活动状态部分唯一索引保证每 Thread 最多一个活动 Run。技能版本由数据库触发器禁止 UPDATE/DELETE。
 
 - `GET /skills?kind=scenario|core|advanced`：真实清单加当前租户配置，固定 6/4/3。
 - `GET /skills/{id}?version=0.1.0`：当前详情或已保存的历史版本，含专业指导、三个 JSON Schema、校验和及工具许可。历史定义的配置为该版本默认值，不宣称是历史 Run 参数；实际运行参数在 Run 快照中。
@@ -95,6 +97,22 @@ npm run test:e2e
 - `POST /skills/resolve`：带 CSRF 的计划预览；后端固定补齐四项基础，只允许一个场景。自动选择是显式 Manifest 规则，记录选择原因，不宣称已运行 LLM Planner；不创建 Run、不调用模型。
 
 内部 `RunPreparation.prepare` 在同一事务锁定 Thread、检查权限/幂等/活动 Run、冻结技能快照并保存用户消息；已通过真实数据库并发和重试测试。它尚未接入公共执行入口，前端开始分析保持禁用。
+
+- `GET /research/{id}/reports`：当前 Tenant 项目的真实报告列表；没有报告时返回空数组。
+- `GET /reports/{id}`：当前持久化版本、结构化章节/Claim、产物修订、质检历史和脱敏调用信息；不存在或跨 Tenant 返回 404。
+- `GET /evidence/{id}`：原始引用、来源 URL、定位、采集时间和摘要/网页类型；需要有效身份和 Tenant 归属。
+
+## 研究 Runtime 与真实联网验收
+
+`LocalRunExecutor` 是有界进程内任务管理器；独立于读取请求，有内部提交/取消/状态接口。Graph State 仅保存实体引用和受控审查结果；执行使用数据库冻结的指导、Schema 与工具许可。写入按 Run/阶段/修订的稳定 ID 去重，报告历史版本不覆盖。缺少证据、Schema 错误、供应商失败、超时或无变化的返工均不能伪装通过。运行时不执行任意代码；未配置 embedding 时证据工具为关键词/结构化检索。
+
+```powershell
+uv run python scripts/check_research.py
+```
+
+这是**手动、付费的真实模型/搜索调用**：创建 `spyglass_live_*` 临时库并迁移，用真实 Provider 执行合法竞品任务，读取报告和检查点，最后仅删除该临时库；不会在普通构建/测试中执行，也不在业务库预置账号。脱敏结果保存在忽略目录 `.artifacts/live-research.json`，不含 API Key 或登录令牌。
+
+2026-10-20 联网过程实际观察到：兼容网关 `stream=false` 只返回 usage 帧，现已使用显式流式请求并收集正文/真实 usage；一轮采集 20 条证据、生成 5 节报告并执行质量返工，最终 240.47 秒因总预算保留 needs_review；另一轮 Planner 60.22 秒超时，明确保存不足报告。**没有把这些需复核结果宣称为质量通过或供应商稳定可用。** 默认全局 LLM 并发 3、单调用 60 秒、Run 240 秒、最多 2 次返工、本地容量 2；超时后最多 15 秒无模型清理，配置见 `.env.example`。本切片验收详见 `docs/slices/slice-3.md`。
 
 契约变更后运行 `npm run api:types`，从 FastAPI OpenAPI 生成并格式化 `apps/web/src/types/api.generated.ts`。页面只通过 services 访问 API；TanStack Query 管理请求和会话状态，Zustand 保存草稿、模式和技能选择；切换账户及登出清理私有缓存及选择状态。
 
@@ -112,4 +130,4 @@ uv run python scripts/check_providers.py
 
 九张原始图保留于 `references/`，标准英文副本在 `assets/references/`；manifest 保存文件名映射和哈希。首页采用白色/浅灰/深绿、232px 侧栏、欢迎区、输入框、六场景、模板及真实近期项目；侧栏没有场景技能。技能中心遵循原图 07 的概览、筛选、分类卡片结构，实际展示 6/4/3；版本/工具/Schema 及配置有真实服务。没有复制原图虚构使用量或多余行业技能。我的调研完整指标/活动布局在 Slice 5 接入，其余业务页面明确禁用。没有虚构运营统计、评论或报告。
 
-用户新增性能要求已同步 PRD/TECHNICAL/prompt：Slice 3 的产品、定价、用户评价 LLM 必须并发，有全局并发限制、单请求超时、Run 总预算；SWOT、Writer、Reviewer 按数据依赖汇合。需在后续提供并发重叠、截止时间和真实端到端报告验收证据。
+用户新增性能要求已同步 PRD/TECHNICAL/prompt：Slice 3 的产品、定价、用户评价 LLM 已并发，有全局并发限制、单请求超时、Run 总预算；SWOT、Writer、Reviewer 按数据依赖汇合。实际并发重叠、截止时间和后端联网结果见 Slice 3 验收记录；前端提交到报告的完整链路仍由 Slice 4 接入。
