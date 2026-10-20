@@ -106,7 +106,7 @@ export function SkillCenter() {
           <p role="status">正在加载技能…</p>
         ) : query.error ? (
           <div role="alert">
-            技能加载失败{' '}
+            技能加载失败：{query.error.message}{' '}
             <button className="text-button" onClick={() => void query.refetch()}>
               重试
             </button>

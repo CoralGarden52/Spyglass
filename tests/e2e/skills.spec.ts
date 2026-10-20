@@ -36,6 +36,26 @@ test('real registry selection, core enforcement and automatic plan preview', asy
   await page.screenshot({ path: '.artifacts/screenshots/slice-2-workbench.png', fullPage: true });
 });
 
+test('skill conflict shows the server reason on workbench and skill centre', async ({ page }) => {
+  await page.route('**/api/v1/skills', async (route) => {
+    await route.fulfill({
+      status: 409,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        error: {
+          code: 'skill_version_conflict',
+          message: '同一 Skill 版本的内容已改变，请提升版本号后重试',
+          request_id: 'controlled-conflict-fixture',
+        },
+      }),
+    });
+  });
+  await page.goto('/');
+  await expect(page.getByRole('alert')).toContainText('请提升版本号后重试');
+  await page.getByRole('link', { name: '管理技能', exact: true }).click();
+  await expect(page.getByRole('alert')).toContainText('请提升版本号后重试');
+});
+
 test('skill centre filters and persists tenant configuration across refresh', async ({
   page,
   browser,

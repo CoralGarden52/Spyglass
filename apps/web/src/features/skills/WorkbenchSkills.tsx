@@ -42,7 +42,7 @@ export function WorkbenchSkills() {
         <p role="status">正在加载技能…</p>
       ) : skills.error ? (
         <div role="alert">
-          技能加载失败{' '}
+          技能加载失败：{skills.error.message}{' '}
           <button className="text-button" onClick={() => void skills.refetch()}>
             重试
           </button>

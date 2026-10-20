@@ -18,7 +18,7 @@ class SkillRepository:
         self.database = database
         self.context = context
 
-    async def ensure_catalogue(self, registry: SkillRegistry) -> None:
+    async def ensure_catalogue(self, registry: SkillRegistry) -> dict[str, SkillVersion]:
         values = []
         for definition in registry.all():
             manifest = definition.manifest
@@ -40,12 +40,18 @@ class SkillRepository:
                 }
             )
         await self.database.execute(insert(SkillVersion).values(values).on_conflict_do_nothing())
+        catalogue = {}
         for definition in registry.all():
             saved = await self.version(definition.manifest.id, definition.manifest.version)
-            if saved is None or saved.manifest_checksum != definition.checksum:
+            if saved is None or saved.manifest_checksum not in {
+                definition.checksum,
+                *definition.legacy_checksums,
+            }:
                 raise DomainError(
                     409, "skill_version_conflict", "同一 Skill 版本的内容已改变，请提升版本号后重试"
                 )
+            catalogue[definition.manifest.id] = saved
+        return catalogue
 
     async def version(self, skill_id: str, version: str) -> SkillVersion | None:
         return await self.database.get(SkillVersion, (skill_id, version))

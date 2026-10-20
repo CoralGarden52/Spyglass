@@ -434,6 +434,8 @@ MVP Docker Compose 服务可为 `web`、`api`、`postgres`（安装 pgvector）�
 
 ## 15. Slice 3 已落地 Runtime 与只读结果协议
 
+技能清单校验和的新写入统一将 Manifest/指导的 CRLF 转为 LF；兼容旧版本对相同原文件及 Schema 的 LF/CRLF 原始字节哈希，不忽略其他内容差异。已保存版本不改写；列表/详情和新 Run 快照使用数据库版本的实际校验和，执行仍读取其冻结内容。此兼容规则避免 Windows 与 Linux 部署之间仅因换行误报版本冲突，真正内容变化仍要求升版。
+
 - `agent/runtime` 为真实 LangGraph StateGraph；Planner → Resolver → Collector → Normalizer → 三项并发基础分析 → 汇合 → SWOT/无相互依赖增强项并发 → 战略建议（如选中）→ Writer → Reviewer。依赖通过独立 State 输出键和多源汇合边实现，未引入第二个 Agent 编排核心。
 - 四专业角色分别调用模型，交接内容经 Pydantic/冻结 JSON Schema 验证。运行时读取数据库 `(id,version,checksum)` 对应的 Skill 指导、输入/输出契约和工具许可，不重读可变文件替换历史版本。跨字段事实安全规则对历史版本也生效：有来源状态不可缺证据，已知价格必须有币种和单位；当前冻结 Schema 与注册类型相同时同时执行 Pydantic 业务校验。
 - Collector 生成结构化检索计划、实际调用 Bocha，并有限读取搜索结果网页。Source/Evidence 明确区分 search_snippet 和 web_page，保留 URL/定位/采集时间；网页工具逐跳验证 DNS/IP，固定连接到已验证 IP、保留 Host/TLS SNI，检查目标 robots、大小、类型及超时。robots 本身重定向目前拒绝访问；不把拒绝访问当作产品不支持。

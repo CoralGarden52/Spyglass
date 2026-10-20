@@ -71,6 +71,20 @@ def test_guidance_change_changes_content_checksum(definitions: Path) -> None:
     assert SkillRegistry.from_directory(definitions).get("user_sentiment").checksum != before
 
 
+def test_identical_skills_have_portable_checksums_across_line_endings(definitions: Path) -> None:
+    before = SkillRegistry.from_directory(definitions)
+    for path in [*definitions.glob("*/manifest.yaml"), *definitions.glob("*/SKILL.md")]:
+        path.write_bytes(path.read_bytes().replace(b"\r\n", b"\n"))
+    lf = SkillRegistry.from_directory(definitions)
+    for path in [*definitions.glob("*/manifest.yaml"), *definitions.glob("*/SKILL.md")]:
+        path.write_bytes(path.read_bytes().replace(b"\n", b"\r\n"))
+    crlf = SkillRegistry.from_directory(definitions)
+    for definition in before.all():
+        skill_id = definition.manifest.id
+        assert lf.get(skill_id).checksum == crlf.get(skill_id).checksum
+        assert lf.get(skill_id).instructions == crlf.get(skill_id).instructions
+
+
 def test_client_cannot_remove_core_or_select_multiple_scenarios() -> None:
     for payload in [
         {"core_skill_ids": []},

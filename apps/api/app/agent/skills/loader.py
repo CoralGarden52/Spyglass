@@ -18,6 +18,7 @@ class Definition:
     manifest: Manifest
     instructions: str
     checksum: str
+    legacy_checksums: frozenset[str] = frozenset()
 
 
 def load_definition(directory: Path, root: Path) -> Definition:
@@ -32,7 +33,8 @@ def load_definition(directory: Path, root: Path) -> Definition:
             raise SkillValidationError("Skill files must remain inside their definition directory")
         if manifest_path.stat().st_size > 65536 or entrypoint.stat().st_size > 65536:
             raise SkillValidationError("Skill files exceed size limit")
-        raw = manifest_path.read_bytes()
+        original_manifest = manifest_path.read_bytes()
+        raw = original_manifest.replace(b"\r\n", b"\n")
         if any(isinstance(token, yaml.tokens.AliasToken) for token in yaml.scan(raw)):
             raise SkillValidationError("YAML aliases are not supported")
         manifest = Manifest.model_validate(yaml.safe_load(raw))
@@ -47,7 +49,8 @@ def load_definition(directory: Path, root: Path) -> Definition:
             raise SkillValidationError("Unknown schema contract")
         if not issubclass(SCHEMAS[manifest.config_schema], (ScenarioConfig, AnalysisConfig)):
             raise SkillValidationError("Config schema must declare validated default parameters")
-        instructions_bytes = entrypoint.read_bytes()
+        original_instructions = entrypoint.read_bytes()
+        instructions_bytes = original_instructions.replace(b"\r\n", b"\n")
         instructions = instructions_bytes.decode("utf-8")
         if len(instructions.strip()) < 80:
             raise SkillValidationError("Skill guidance is incomplete")
@@ -55,14 +58,28 @@ def load_definition(directory: Path, root: Path) -> Definition:
             schema_document(name)
             for name in (manifest.input_schema, manifest.output_schema, manifest.config_schema)
         ]
-        checksum = hashlib.sha256(
-            raw
-            + b"\0"
-            + instructions_bytes
-            + b"\0"
-            + json.dumps(schemas, sort_keys=True, ensure_ascii=False).encode()
-        ).hexdigest()
-        return Definition(manifest, instructions, checksum)
+        schema_bytes = json.dumps(schemas, sort_keys=True, ensure_ascii=False).encode()
+
+        def content_hash(manifest_bytes: bytes, guidance_bytes: bytes) -> str:
+            return hashlib.sha256(
+                manifest_bytes + b"\0" + guidance_bytes + b"\0" + schema_bytes
+            ).hexdigest()
+
+        checksum = content_hash(raw, instructions_bytes)
+        # Older releases hashed raw files. Accept only known LF/CRLF variants of
+        # these exact files and schemas; substantive edits still require a new version.
+        legacy_checksums = frozenset(
+            {
+                content_hash(manifest_variant, guidance_variant)
+                for manifest_variant in (raw, raw.replace(b"\n", b"\r\n"))
+                for guidance_variant in (
+                    instructions_bytes,
+                    instructions_bytes.replace(b"\n", b"\r\n"),
+                )
+            }
+            | {content_hash(original_manifest, original_instructions)}
+        )
+        return Definition(manifest, instructions, checksum, legacy_checksums)
     except (OSError, UnicodeError, ValueError, yaml.YAMLError) as exc:
         if isinstance(exc, SkillValidationError):
             raise

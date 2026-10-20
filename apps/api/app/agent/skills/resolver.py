@@ -49,7 +49,7 @@ def resolve(
                 id=skill_id,
                 kind=manifest.kind,
                 version=manifest.version,
-                manifest_checksum=definition.checksum,
+                manifest_checksum=config.manifest_checksum,
                 selection_source=source,
                 selection_reason=reason,
                 config=config.config,

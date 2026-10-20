@@ -1,5 +1,8 @@
 import asyncio
+import hashlib
+import json
 import shutil
+from dataclasses import replace
 from pathlib import Path
 from uuid import UUID, uuid4
 
@@ -8,6 +11,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import func, select, text
 from sqlalchemy.exc import DBAPIError
 
+from app.agent.skills.contracts import schema_document
 from app.agent.skills.models import Selection
 from app.agent.skills.registry import SkillRegistry
 from app.application.auth import AuthService
@@ -15,6 +19,8 @@ from app.application.run_preparation import RunPreparation, RunRequest
 from app.core.config import ROOT
 from app.domain.errors import DomainError
 from app.infrastructure.database.research import Message, Run
+from app.infrastructure.database.skills import SkillVersion
+from app.infrastructure.research_store import ResearchStore
 from tests.integration.test_skills import headers, register
 
 pytestmark = pytest.mark.integration
@@ -32,6 +38,64 @@ def thread(client: TestClient) -> UUID:
     )
     assert result.status_code == 201
     return UUID(result.json()["data"]["id"])
+
+
+def test_legacy_crlf_catalogue_loads_without_rewriting_history_or_breaking_runs(
+    api_client: TestClient,
+) -> None:
+    register(api_client)
+    current = api_client.app.state.skills
+    legacy = []
+    for definition in current.all():
+        manifest = definition.manifest
+        directory = ROOT / "extensions/skills" / manifest.id
+
+        def crlf(raw: bytes) -> bytes:
+            return raw.replace(b"\r\n", b"\n").replace(b"\n", b"\r\n")
+
+        instructions = crlf((directory / "SKILL.md").read_bytes())
+        schemas = [
+            schema_document(name)
+            for name in (manifest.input_schema, manifest.output_schema, manifest.config_schema)
+        ]
+        old_hash = hashlib.sha256(
+            crlf((directory / "manifest.yaml").read_bytes())
+            + b"\0"
+            + instructions
+            + b"\0"
+            + json.dumps(schemas, sort_keys=True, ensure_ascii=False).encode()
+        ).hexdigest()
+        legacy.append(replace(definition, instructions=instructions.decode(), checksum=old_hash))
+    api_client.app.state.skills = SkillRegistry(legacy)
+    first = api_client.get("/api/v1/skills")
+    assert first.status_code == 200
+    historical = {item["id"]: item["manifest_checksum"] for item in first.json()["data"]}
+    api_client.app.state.skills = current
+    loaded = api_client.get("/api/v1/skills")
+    assert loaded.status_code == 200
+    assert {item["id"]: item["manifest_checksum"] for item in loaded.json()["data"]} == historical
+    thread_id = thread(api_client)
+    token = api_client.cookies["sg_session"]
+
+    async def prepare_and_check():
+        async with api_client.app.state.resources.sessions() as db:
+            context = await AuthService(db, api_client.app.state.settings).resolve(token)
+            prepared = await RunPreparation(db, context, current).prepare(
+                thread_id, RunRequest(user_message="Line ending regression fixture"), str(uuid4())
+            )
+            rows = (await db.scalars(select(SkillVersion))).all()
+            assert len(rows) == 13
+            assert {row.id: row.manifest_checksum for row in rows} == historical
+            assert all("\r\n" in row.instructions for row in rows)
+        for snapshot in prepared.skills:
+            assert snapshot.manifest_checksum == historical[snapshot.id]
+        definitions = await ResearchStore(
+            api_client.app.state.resources.sessions, context, prepared.run_id
+        ).definitions()
+        assert len(definitions) == 5
+        assert all("\r\n" in item["instructions"] for item in definitions.values())
+
+    api_client.portal.call(prepare_and_check)
 
 
 def test_snapshot_is_atomic_frozen_and_idempotent(api_client: TestClient) -> None:

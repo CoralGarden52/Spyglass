@@ -21,7 +21,7 @@ from app.agent.skills.registry import SkillRegistry
 from app.agent.skills.resolver import resolve
 from app.application.auth import TenantContext
 from app.domain.errors import DomainError
-from app.infrastructure.database.skills import SkillConfig, SkillMutation
+from app.infrastructure.database.skills import SkillConfig, SkillMutation, SkillVersion
 from app.infrastructure.skill_repository import SkillRepository
 
 
@@ -47,7 +47,7 @@ class SkillService:
                 422, "invalid_skill_config", "配置字段或范围不符合 Skill Schema"
             ) from None
 
-    async def views(self) -> dict[str, SkillView]:
+    async def views(self, catalogue: dict[str, SkillVersion]) -> dict[str, SkillView]:
         configs = await self.repository.configs()
         result = {}
         for definition in self.registry.all():
@@ -67,7 +67,7 @@ class SkillService:
                 description=m.description,
                 kind=m.kind,
                 version=m.version,
-                manifest_checksum=definition.checksum,
+                manifest_checksum=catalogue[m.id].manifest_checksum,
                 is_system_required=m.id in CORE_IDS,
                 enabled=saved.enabled if saved else True,
                 revision=saved.revision if saved else 0,
@@ -82,8 +82,8 @@ class SkillService:
         return result
 
     async def list(self, kind: str | None = None) -> SkillList:
-        await self.repository.ensure_catalogue(self.registry)
-        views = await self.views()
+        catalogue = await self.repository.ensure_catalogue(self.registry)
+        views = await self.views(catalogue)
         await self.database.commit()
         return SkillList(
             data=[item for item in views.values() if kind is None or item.kind == kind]
@@ -91,7 +91,7 @@ class SkillService:
 
     async def detail(self, skill_id: str, version: str | None = None) -> SkillResult:
         definition = self.registry.get(skill_id)
-        await self.repository.ensure_catalogue(self.registry)
+        catalogue = await self.repository.ensure_catalogue(self.registry)
         m = definition.manifest
         if version is not None and version != m.version:
             stored = await self.repository.version(skill_id, version)
@@ -124,10 +124,10 @@ class SkillService:
                 config_json_schema=metadata["config_json_schema"],
             )
         else:
-            view = (await self.views())[skill_id]
+            view = (await self.views(catalogue))[skill_id]
             result = SkillDetail(
                 **view.model_dump(),
-                instructions=definition.instructions,
+                instructions=catalogue[skill_id].instructions,
                 input_json_schema=schema_document(m.input_schema),
                 output_json_schema=schema_document(m.output_schema),
                 config_json_schema=schema_document(m.config_schema),
@@ -142,7 +142,7 @@ class SkillService:
             raise DomainError(409, code, "基础分析不可关闭；场景通过主场景单选切换")
         if payload.config is None and payload.enabled is None:
             raise DomainError(422, "empty_skill_update", "请提供启用状态或配置")
-        await self.repository.ensure_catalogue(self.registry)
+        catalogue = await self.repository.ensure_catalogue(self.registry)
         await self.repository.lock_tenant()
         checksum = hashlib.sha256(
             (
@@ -157,7 +157,7 @@ class SkillService:
                 raise DomainError(409, "idempotency_conflict", "幂等键已用于其他 Skill 配置请求")
             await self.database.commit()
             return SkillResult.model_validate(previous.response_json)
-        current = (await self.views())[skill_id]
+        current = (await self.views(catalogue))[skill_id]
         if payload.expected_revision != current.revision:
             raise DomainError(409, "skill_config_conflict", "配置已被更新，请刷新后重试")
         if current.config_status == "migration_required" and payload.config is None:
@@ -178,11 +178,11 @@ class SkillService:
         row.updated_at = datetime.now(UTC)
         await self.database.flush()
         m = definition.manifest
-        view = (await self.views())[skill_id]
+        view = (await self.views(catalogue))[skill_id]
         result = SkillResult(
             data=SkillDetail(
                 **view.model_dump(),
-                instructions=definition.instructions,
+                instructions=catalogue[skill_id].instructions,
                 input_json_schema=schema_document(m.input_schema),
                 output_json_schema=schema_document(m.output_schema),
                 config_json_schema=schema_document(m.config_schema),
@@ -201,8 +201,10 @@ class SkillService:
         return result
 
     async def resolution(self, selection: Selection, *, commit: bool = True) -> ResolutionResult:
-        await self.repository.ensure_catalogue(self.registry)
-        result = ResolutionResult(data=resolve(self.registry, selection, await self.views()))
+        catalogue = await self.repository.ensure_catalogue(self.registry)
+        result = ResolutionResult(
+            data=resolve(self.registry, selection, await self.views(catalogue))
+        )
         if commit:
             await self.database.commit()
         return result
