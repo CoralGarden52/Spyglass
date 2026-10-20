@@ -1,4 +1,8 @@
 import { motion } from 'framer-motion';
+import { useQuery } from '@tanstack/react-query';
+import { Link } from 'react-router';
+import { useIdentity } from '../features/auth/session';
+import { listProjects } from '../services/research';
 import {
   ArrowRight,
   BarChart3,
@@ -66,6 +70,12 @@ const templates = [
 
 export function Workbench() {
   const { draft, setDraft, mode, setMode } = useWorkbench();
+  const { data: identity } = useIdentity();
+  const recent = useQuery({
+    queryKey: ['projects', 'recent'],
+    queryFn: () => listProjects(),
+    retry: false,
+  });
   return (
     <motion.main
       className="workbench"
@@ -76,7 +86,7 @@ export function Workbench() {
       <section className="welcome">
         <h1>
           <Sun size={40} strokeWidth={1.8} />
-          开始你的下一次洞察
+          你好，{identity?.user.display_name}
         </h1>
         <p>你的 AI 竞品分析工作台 — 让调研、比较、验证与报告生成一体完成</p>
       </section>
@@ -134,7 +144,7 @@ export function Workbench() {
           </div>
         </div>
         <p id="research-disabled" className="composer-note">
-          研究提交将在认证、Skills 与 Agent 链路接通后开放。当前可编辑需求、选择模式、使用模板。
+          研究执行尚未开放。当前可编辑需求、选择模式、使用模板，并在“我的调研”中创建项目。
         </p>
       </section>
       <section className="scenario-section">
@@ -144,7 +154,7 @@ export function Workbench() {
             <h2>场景技能</h2>
             <p>基于不同业务场景与行业领域，提供专业的分析技能。</p>
           </div>
-          <span className="small-badge">Slice 2 接入 Registry</span>
+          <span className="small-badge">技能配置尚未开放</span>
         </div>
         <div className="scenario-grid">
           {scenarios.map(({ title, description, icon: Icon, color }, index) => (
@@ -215,21 +225,49 @@ export function Workbench() {
             </div>
             <span className="muted">从你的第一个问题开始</span>
           </div>
-          <div className="empty-research">
-            <span className="empty-icon">
-              <MessageSquare size={26} />
-            </span>
-            <div>
-              <h3>尚未创建调研</h3>
-              <p>研究服务开放后，这里将展示真实项目和报告。</p>
+          {recent.isPending ? (
+            <p role="status" className="muted">
+              正在加载最近调研…
+            </p>
+          ) : recent.error ? (
+            <div role="alert">
+              <p className="muted">最近调研加载失败</p>
+              <button className="text-button" onClick={() => void recent.refetch()}>
+                重新加载
+              </button>
             </div>
-            <Sparkles size={20} />
-          </div>
+          ) : recent.data?.data.length ? (
+            <div className="recent-projects">
+              {recent.data.data.slice(0, 2).map((project) => (
+                <Link key={project.id} to={`/research/${project.id}`} className="recent-project">
+                  <FileText size={23} />
+                  <div>
+                    <h3>{project.title}</h3>
+                    <p className="muted">
+                      {new Date(project.created_at).toLocaleDateString('zh-CN')} · 已保存项目
+                    </p>
+                  </div>
+                  <ChevronRight size={16} />
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <div className="empty-research">
+              <span className="empty-icon">
+                <MessageSquare size={26} />
+              </span>
+              <div>
+                <h3>尚未创建调研</h3>
+                <p>在“我的调研”创建项目，这里将展示最近记录。</p>
+              </div>
+              <Sparkles size={20} />
+            </div>
+          )}
         </section>
         <HealthStatus />
       </div>
       <footer className="workbench-footer">
-        Spyglass · 真实来源，清晰判断 <span>当前为工程基线，无演示业务数据</span>
+        Spyglass · 真实来源，清晰判断 <span>个人工作空间 · 无演示业务数据</span>
       </footer>
     </motion.main>
   );

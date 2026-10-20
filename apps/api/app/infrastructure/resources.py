@@ -3,7 +3,7 @@ from typing import cast
 
 from redis.asyncio import Redis
 from sqlalchemy import text
-from sqlalchemy.ext.asyncio import create_async_engine
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 from app.core.config import Settings
 
@@ -16,6 +16,7 @@ class Resources:
             hide_parameters=True,
             connect_args={"connect_timeout": 3},
         )
+        self.sessions = async_sessionmaker(self.engine, expire_on_commit=False)
         self.redis: Redis = Redis.from_url(
             settings.redis_url.get_secret_value(),
             socket_connect_timeout=settings.dependency_timeout_seconds,
@@ -34,7 +35,7 @@ class Resources:
     async def check_migration(self) -> None:
         async with self.engine.connect() as connection:
             result = await connection.scalar(text("SELECT version_num FROM alembic_version"))
-            if result != "0001_pgvector":
+            if result != "0002_auth_workspace":
                 raise RuntimeError("Migration required")
 
     async def check_redis(self) -> None:

@@ -20,3 +20,11 @@ def test_settings_never_expose_secrets_in_repr() -> None:
 def test_concurrency_bounds_reject_invalid_values(limit: int) -> None:
     with pytest.raises(ValidationError):
         Settings(_env_file=None, llm_max_concurrency=limit)
+
+
+def test_production_requires_secure_session_cookies() -> None:
+    with pytest.raises(ValidationError):
+        Settings(_env_file=None, app_env="production", session_cookie_secure=False)
+    assert Settings(
+        _env_file=None, app_env="production", session_cookie_secure=True
+    ).session_cookie_secure

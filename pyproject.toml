@@ -11,6 +11,8 @@ dependencies = [
   "psycopg[binary,pool]>=3.2,<4",
   "alembic>=1.15,<2",
   "redis>=5.2,<8",
+  "argon2-cffi>=25,<26",
+  "email-validator>=2.2,<3",
 ]
 
 [dependency-groups]

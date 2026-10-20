@@ -6,6 +6,7 @@ type WorkbenchState = {
   mode: Mode;
   setDraft: (draft: string) => void;
   setMode: (mode: Mode) => void;
+  reset: () => void;
 };
 
 export const useWorkbench = create<WorkbenchState>((set) => ({
@@ -13,4 +14,5 @@ export const useWorkbench = create<WorkbenchState>((set) => ({
   mode: 'standard',
   setDraft: (draft) => set({ draft }),
   setMode: (mode) => set({ mode }),
+  reset: () => set({ draft: '', mode: 'standard' }),
 }));

@@ -17,7 +17,7 @@
     "format": "prettier --write apps/web tests/e2e playwright.config.ts package.json",
     "format:check": "prettier --check apps/web tests/e2e playwright.config.ts package.json",
     "test": "npm run test --workspace apps/web",
-    "test:e2e": "playwright test",
+    "test:e2e": "uv run python scripts/run_e2e.py",
     "api:types": "uv run python scripts/export_openapi.py && openapi-typescript .artifacts/openapi.json -o apps/web/src/types/api.generated.ts && prettier --write apps/web/src/types/api.generated.ts"
   },
   "devDependencies": {

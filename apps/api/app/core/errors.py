@@ -7,6 +7,8 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from starlette.exceptions import HTTPException
 
+from app.domain.errors import DomainError
+
 
 class ErrorDetail(BaseModel):
     code: str
@@ -39,6 +41,10 @@ def error_response(
 
 
 def install_error_handlers(app: FastAPI) -> None:
+    @app.exception_handler(DomainError)
+    async def domain_error(request: Request, exc: DomainError) -> JSONResponse:
+        return error_response(request, exc.status, exc.code, exc.message, headers=exc.headers)
+
     @app.exception_handler(HTTPException)
     async def http_error(request: Request, exc: HTTPException) -> JSONResponse:
         codes = {404: "not_found", 405: "method_not_allowed", 401: "unauthorized", 403: "forbidden"}

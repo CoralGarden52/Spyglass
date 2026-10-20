@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Link, Outlet } from 'react-router';
+import { Link, NavLink, Outlet, useLocation } from 'react-router';
+import { useIdentity } from '../features/auth/session';
 import {
   Activity,
   Bell,
@@ -30,6 +31,13 @@ const navigation = [
 
 export function AppShell() {
   const [menuOpen, setMenuOpen] = useState(false);
+  const { data } = useIdentity();
+  const location = useLocation();
+  const pageTitle = location.pathname.startsWith('/research')
+    ? '我的调研'
+    : location.pathname === '/settings'
+      ? '账户与工作空间'
+      : '工作台';
   return (
     <div className="app-shell">
       <aside className={`sidebar ${menuOpen ? 'is-open' : ''}`} aria-label="全局侧边栏">
@@ -46,17 +54,17 @@ export function AppShell() {
         </button>
         <nav aria-label="主导航">
           {navigation.map(({ name, icon: Icon }, index) =>
-            index === 0 ? (
-              <Link
-                to="/"
-                aria-current="page"
-                className="nav-item active"
+            index <= 1 ? (
+              <NavLink
+                to={index === 0 ? '/' : '/research'}
+                end={index === 0}
+                className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
                 key={name}
                 onClick={() => setMenuOpen(false)}
               >
                 <Icon size={19} />
                 {name}
-              </Link>
+              </NavLink>
             ) : (
               <div className="nav-disabled" key={name}>
                 <button
@@ -73,30 +81,30 @@ export function AppShell() {
           )}
         </nav>
         <p id="navigation-note" className="navigation-note">
-          工程初始化中
+          研究服务接入中
           <br />
-          业务页面将在后续切片开放
+          其余业务页面将陆续开放
         </p>
         <div className="workspace">
           <div className="workspace-label">
             <CircleUserRound size={17} />
-            <span>我的工作空间</span>
-            <span className="small-badge">本地开发</span>
+            <span title={data?.tenant.name}>我的工作空间</span>
+            <span className="small-badge">个人</span>
           </div>
           <div className="profile-row">
-            <span className="avatar">S</span>
+            <span className="avatar">{data?.user.display_name.slice(0, 1)}</span>
             <div>
-              <strong>访客</strong>
-              <small>认证将在 Slice 1 开放</small>
+              <strong>{data?.user.display_name}</strong>
+              <small>个人工作空间 · 所有者</small>
             </div>
-            <button
+            <Link
+              to="/settings"
               className="icon-button"
-              disabled
-              title="设置尚未开放"
-              aria-label="设置（尚未开放）"
+              title="账户与工作空间"
+              aria-label="账户设置"
             >
               <Settings size={19} />
-            </button>
+            </Link>
           </div>
         </div>
       </aside>
@@ -119,11 +127,12 @@ export function AppShell() {
               <Menu size={20} />
             </button>
             <Shapes size={18} />
-            <strong>工作台</strong>
-            <span className="baseline-badge">工程基线 · Slice 0</span>
+            <strong>{pageTitle}</strong>
+            <span className="baseline-badge">个人工作空间</span>
           </div>
           <div className="topbar-actions">
-            <button
+            <Link
+              to="/"
               className="soft-button"
               onClick={() =>
                 document.querySelector<HTMLTextAreaElement>('#research-input')?.focus()
@@ -131,7 +140,7 @@ export function AppShell() {
             >
               <Plus size={17} />
               新建调研
-            </button>
+            </Link>
             <button className="outline-button" disabled title="导入尚未开放">
               <Upload size={16} />
               导入项目

@@ -399,3 +399,12 @@ MVP Docker Compose 服务可为 `web`、`api`、`postgres`（安装 pgvector）�
 - [ ] 同 Thread 并发冲突有原子保护；不同 Thread 不共享 State；跨 Tenant API/文件/向量/事件不可读。
 - [ ] Token、模型调用、工具耗时和错误来自真实记录；没有模拟统计进入正常业务环境。
 - [ ] 认证、上传、web_fetch SSRF、敏感信息脱敏和报告版本冲突均有测试。
+
+## 14. Slice 1 已落地协议补充
+
+- 认证使用 PostgreSQL 持久化的随机 Cookie Session（令牌与 CSRF 只存摘要），Argon2id 密码哈希；默认个人工作空间由有效 `tenant_members` 关系解析。用户/租户从服务端身份获得，客户端传 `tenant_id` 会被额外字段校验拒绝。
+- `POST /auth/register`：email、password（15–128 字符）、display_name；返回 201 Identity（schema_version/user/tenant）并设置 Cookie。`POST /auth/login` 返回同一 Identity；`GET /users/me` 恢复身份；`POST /auth/logout` 返回 204 并撤销会话。受保护 API 的 401、Origin/CSRF 的 403、重复邮箱/幂等冲突的 409、限流 429、Redis 故障 503 都采用统一错误。
+- Auth 写入要求精确匹配白名单的 Origin；私有写入再校验 `X-CSRF-Token`。默认登录/注册每来源 IP/接口 5 次/60 秒，Redis Lua 原子 INCR/EXPIRE。生产必须开启 Secure Cookie 与 HTTPS；开发显式使用 HTTP Cookie。
+- Project/Thread 创建要求 `Idempotency-Key`（8–128 个字母、数字或 `_.:-`），请求内容摘要与实体同时保存；同键不同内容 409。Project 列表接受 q/limit（1–100）/offset（0–10000），返回 `{schema_version,data,meta:{total,limit,offset}}`。读取单项返回 `{schema_version,data}`。消息历史查询真实 messages 表；空会话返回空数组，不生成示例消息。
+- Slice 1 新增业务迁移 `0002_auth_workspace`：users、tenants、tenant_members、sessions、research_projects、threads、runs、messages。组合外键/唯一约束与活动 Run 部分索引已在真实数据库测试；Run 执行与事件在后续切片实现，LangGraph Checkpointer 尚未初始化。
+- OpenAPI 为运行代码生成，TypeScript 类型通过 `npm run api:types` 同步；具体当前验收结果记录在 `docs/slices/`，此补充不改变 Slice 2–6 的原有验收要求。
