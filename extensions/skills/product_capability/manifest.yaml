@@ -1,0 +1,32 @@
+schema_version: 1
+id: product_capability
+name: 产品能力分析
+description: 建立基于证据的产品定位、功能树与功能对照，区分能力深度和支持状态。
+version: 0.1.0
+kind: core
+entrypoint: SKILL.md
+applies_to:
+- analyst
+requires:
+- normalized_evidence
+allowed_tools:
+- evidence_search
+- knowledge_retrieval
+input_schema: EvidenceInput
+output_schema: ProductResult
+config_schema: AnalysisConfig
+dimensions:
+- 定位
+- 功能树
+- 功能状态
+- 差异
+source_priorities:
+- 已标准化证据
+- 上游分析产物
+review_aspects:
+- 功能
+- 性能
+- 价格
+- 易用性
+- 可靠性
+recommended_advanced: {}

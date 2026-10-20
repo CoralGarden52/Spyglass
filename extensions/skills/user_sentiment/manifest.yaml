@@ -1,0 +1,32 @@
+schema_version: 1
+id: user_sentiment
+name: 用户评价分析
+description: 抽取真实评论的整体四分类和方面级情感，报告去重样本、分母与来源偏差。
+version: 0.1.0
+kind: core
+entrypoint: SKILL.md
+applies_to:
+- analyst
+requires:
+- normalized_evidence
+allowed_tools:
+- evidence_search
+- knowledge_retrieval
+input_schema: EvidenceInput
+output_schema: SentimentResult
+config_schema: SentimentConfig
+dimensions:
+- 整体四分类
+- 方面级情感
+- 去重
+- 样本与偏差
+source_priorities:
+- 已标准化证据
+- 上游分析产物
+review_aspects:
+- 功能
+- 性能
+- 价格
+- 易用性
+- 可靠性
+recommended_advanced: {}

@@ -1,0 +1,34 @@
+schema_version: 1
+id: swot_analysis
+name: SWOT 分析
+description: 综合产品、定价和评价产物，形成带证据的优势、劣势、机会和威胁。
+version: 0.1.0
+kind: core
+entrypoint: SKILL.md
+applies_to:
+- analyst
+requires:
+- product_capability
+- pricing_analysis
+- user_sentiment
+allowed_tools:
+- evidence_search
+- knowledge_retrieval
+input_schema: DependentAnalysisInput
+output_schema: SWOTResult
+config_schema: AnalysisConfig
+dimensions:
+- 优势
+- 劣势
+- 机会
+- 威胁
+source_priorities:
+- 已标准化证据
+- 上游分析产物
+review_aspects:
+- 功能
+- 性能
+- 价格
+- 易用性
+- 可靠性
+recommended_advanced: {}

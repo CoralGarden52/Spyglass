@@ -6,38 +6,25 @@ import { listProjects } from '../services/research';
 import {
   ArrowRight,
   BarChart3,
-  Bot,
-  Box,
-  Check,
   ChevronRight,
   ClipboardList,
   Clock3,
   FileText,
   Globe,
-  Layers,
   ListChecks,
   MessageSquare,
   Paperclip,
   PieChart,
   PlusCircle,
-  ShoppingBag,
   Sparkles,
   Sun,
   Tag,
-  Wallet,
   Zap,
 } from 'lucide-react';
+import { WorkbenchSkills } from '../features/skills/WorkbenchSkills';
 import { HealthStatus } from '../features/health/HealthStatus';
 import { useWorkbench } from '../stores/workbench';
 
-const scenarios = [
-  { title: '通用分析', description: '适用于多行业的综合分析', icon: FileText, color: 'blue' },
-  { title: '电商行业', description: '平台对比与运营策略分析', icon: ShoppingBag, color: 'red' },
-  { title: '互联网产品', description: '产品定位与增长策略分析', icon: Layers, color: 'purple' },
-  { title: '硬件与智能设备', description: '产品规格与供应链分析', icon: Box, color: 'orange' },
-  { title: 'AI 与大模型', description: '模型能力与生态格局分析', icon: Bot, color: 'blue' },
-  { title: '金融行业', description: '商业模式与监管环境分析', icon: Wallet, color: 'green' },
-];
 const templates = [
   {
     title: '竞品深度分析',
@@ -144,47 +131,10 @@ export function Workbench() {
           </div>
         </div>
         <p id="research-disabled" className="composer-note">
-          研究执行尚未开放。当前可编辑需求、选择模式、使用模板，并在“我的调研”中创建项目。
+          研究执行尚未开放。当前可编辑需求、配置技能、预览技能计划，并在“我的调研”中创建项目。
         </p>
       </section>
-      <section className="scenario-section">
-        <div className="section-heading">
-          <div className="section-title">
-            <Box size={23} />
-            <h2>场景技能</h2>
-            <p>基于不同业务场景与行业领域，提供专业的分析技能。</p>
-          </div>
-          <span className="small-badge">技能配置尚未开放</span>
-        </div>
-        <div className="scenario-grid">
-          {scenarios.map(({ title, description, icon: Icon, color }, index) => (
-            <div key={title} className={`scenario-card ${index === 0 ? 'default-scenario' : ''}`}>
-              <span className={`tile-icon ${color}`}>
-                <Icon size={23} />
-              </span>
-              <div>
-                <h3>
-                  {title}
-                  {index === 0 && <span className="default-badge">默认</span>}
-                </h3>
-                <p>{description}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-        <div className="core-skills">
-          <span className="flex items-center gap-1.5">
-            <Check size={15} />
-            全部任务自动包含
-          </span>
-          {['产品能力', '定价策略', '用户评价', 'SWOT 分析'].map((name) => (
-            <span key={name} className="core-badge">
-              {name}
-            </span>
-          ))}
-          <span className="core-note">技能执行尚未开放</span>
-        </div>
-      </section>
+      <WorkbenchSkills />
       <section className="template-section">
         <div className="section-heading">
           <div className="section-title">

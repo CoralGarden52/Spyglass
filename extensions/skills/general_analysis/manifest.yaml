@@ -1,0 +1,45 @@
+schema_version: 1
+id: general_analysis
+name: 通用分析
+description: 适用于多行业的综合竞品分析，关注定位、目标用户、产品差异和商业化。
+version: 0.1.0
+kind: scenario
+entrypoint: SKILL.md
+applies_to:
+- planner
+- collector
+- analyst
+requires: []
+allowed_tools:
+- bocha_search
+- web_fetch
+input_schema: ScenarioInput
+output_schema: ScenarioContext
+config_schema: ScenarioConfig
+dimensions:
+- 定位
+- 产品
+- 目标用户
+- 商业化
+- 主要差异
+source_priorities:
+- 官方产品文档
+- 官方价格页
+- 可定位公开评价
+review_aspects:
+- 功能
+- 性能
+- 价格
+- 易用性
+- 客服
+- 可靠性
+- 创新
+- 整体满意度
+recommended_advanced:
+  quick: []
+  standard:
+  - market_landscape
+  deep:
+  - market_landscape
+  - business_model
+  - strategic_recommendation

@@ -19,6 +19,8 @@ test('revoked sessions cannot carry a private draft into a different account', a
     .getByRole('textbox', { name: '研究目标' })
     .fill('ALICE PRIVATE SYNTHETIC RESEARCH DRAFT');
   await page.getByRole('button', { name: '深度调研', exact: true }).click();
+  await page.getByRole('radio', { name: 'AI 与大模型', exact: true }).check();
+  await page.getByRole('checkbox', { name: '市场格局分析', exact: true }).check();
   const cookies = await page.context().cookies();
   const revoked = await page.request.post('/api/v1/auth/logout', {
     headers: {
@@ -36,6 +38,8 @@ test('revoked sessions cannot carry a private draft into a different account', a
   await page.getByRole('button', { name: '注册并进入工作台' }).click();
   await expect(page.getByRole('heading', { name: '你好，Bob' })).toBeVisible();
   await expect(page.getByRole('textbox', { name: '研究目标' })).toHaveValue('');
+  await expect(page.getByRole('radio', { name: '通用分析', exact: true })).toBeChecked();
+  await expect(page.getByRole('checkbox', { name: '市场格局分析', exact: true })).not.toBeChecked();
   await expect(page.getByRole('button', { name: '标准调研', exact: true })).toHaveAttribute(
     'aria-pressed',
     'true',

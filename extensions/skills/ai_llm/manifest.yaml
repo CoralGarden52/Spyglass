@@ -1,0 +1,43 @@
+schema_version: 1
+id: ai_llm
+name: AI 与大模型
+description: 对比模型与 Agent 能力、上下文、工具调用、定价、API 和生态。
+version: 0.1.0
+kind: scenario
+entrypoint: SKILL.md
+applies_to:
+- planner
+- collector
+- analyst
+requires: []
+allowed_tools:
+- bocha_search
+- web_fetch
+input_schema: ScenarioInput
+output_schema: ScenarioContext
+config_schema: ScenarioConfig
+dimensions:
+- 模型与Agent
+- 多模态
+- 上下文
+- 工具调用
+- API与生态
+source_priorities:
+- 官方模型与产品文档
+- 官方计费说明
+- 可核验评测与开发者反馈
+review_aspects:
+- 模型幻觉
+- 上下文能力
+- 工具调用
+- 性能
+- 价格
+- 易用性
+recommended_advanced:
+  quick: []
+  standard:
+  - market_landscape
+  deep:
+  - market_landscape
+  - business_model
+  - strategic_recommendation

@@ -1,0 +1,29 @@
+schema_version: 1
+id: market_landscape
+name: 市场格局分析
+description: 基于可核验来源整理参与者、定位、竞争梯队与差异，不虚构市场份额。
+version: 0.1.0
+kind: advanced
+entrypoint: SKILL.md
+applies_to:
+- analyst
+requires:
+- normalized_evidence
+allowed_tools:
+- evidence_search
+- knowledge_retrieval
+input_schema: EvidenceInput
+output_schema: MarketResult
+config_schema: AnalysisConfig
+dimensions:
+- 参与者
+- 定位
+- 竞争差异
+source_priorities:
+- 已标准化证据
+- 上游分析产物
+review_aspects:
+- 功能
+- 价格
+- 体验
+recommended_advanced: {}

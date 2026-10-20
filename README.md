@@ -2,7 +2,7 @@
 
 竞品分析 Agent 工作台。产品、技术、视觉和任务顺序分别以根目录 `PRD.md`、`TECHNICAL.md`、`DESIGN.md`、`prompt.md` 为准。
 
-当前范围：**Slice 0 + Slice 1**。Web → FastAPI → PostgreSQL/pgvector、Redis 实际连通；已实现注册、登录、登出、默认个人 Tenant、服务器解析的成员权限、持久会话与隔离的 Project/Thread API。前端包含登录守卫、账户设置、项目创建/列表/搜索/详情及首页真实近期项目。Skills、LangGraph、报告生成和导出将在 Slice 2–6 实现，当前不能从输入生成报告。
+当前范围：**Slice 0–2**。Web → FastAPI → PostgreSQL/pgvector、Redis 实际连通；已实现认证、默认个人 Tenant、持久会话与隔离的 Project/Thread API，以及 13 个独立版本化 Skill 的发现、校验、租户配置和计划解析。技能中心展示真实分类、版本、详情与配置；工作台支持六场景单选、四项基础只读必选、三项增强手动/规则自动选择及真实计划预览。内部 Run 准备事务会冻结技能版本快照，但尚无公共 Run 执行 API。LangGraph、报告生成和导出将在后续切片实现，当前不能从输入生成报告。
 
 ## 本地开发（Windows PowerShell / Linux）
 
@@ -87,9 +87,16 @@ npm run test:e2e
 - 所有写请求要求准确匹配白名单的 Origin；已认证写请求还需从 sg_csrf Cookie 读取并通过 X-CSRF-Token 提交，服务器校验绑定会话的摘要。登录/注册有 Redis 原子计数限流（默认每来源 IP/接口 5 次/60 秒）；Redis 不可用时认证写入失败关闭，不降级成无限尝试。外部 API 客户端也需显式设置可信 Origin。
 - 创建 Project/Thread 必须带 8–128 字符 Idempotency-Key；同键同内容返回原实体，同键不同内容返回 409。鉴权接口依赖邮箱唯一约束和会话撤销，不将注册或登出重试伪装成新业务实体。
 
-当前迁移 `0002_auth_workspace` 包含 users/tenants/tenant_members/sessions/research_projects/threads/runs/messages。复合外键阻止跨租户关联；角色/状态有 CHECK；Run 活动状态部分唯一索引保证每 Thread 最多一个活动 Run。**尚无 Run 创建或执行 API**，不会因有 runs 表就宣称调研运行能力完成。完整团队管理、邮箱验证、密码重置尚未实现。
+当前迁移 `0003_skill_registry` 在认证/研究八表基础上新增 skills、skill_configs、skill_config_mutations 和 Run 请求指纹。复合外键阻止跨租户关联；Run 活动状态部分唯一索引保证每 Thread 最多一个活动 Run。技能版本由数据库触发器禁止 UPDATE/DELETE。完整团队管理、邮箱验证、密码重置尚未实现。
 
-契约变更后运行 `npm run api:types`，从 FastAPI OpenAPI 生成并格式化 `apps/web/src/types/api.generated.ts`。页面只通过 services 访问 API；TanStack Query 管理请求和会话状态，Zustand 保存草稿与模式；切换账户及登出清理缓存/草稿。
+- `GET /skills?kind=scenario|core|advanced`：真实清单加当前租户配置，固定 6/4/3。
+- `GET /skills/{id}?version=0.1.0`：当前详情或已保存的历史版本，含专业指导、三个 JSON Schema、校验和及工具许可。历史定义的配置为该版本默认值，不宣称是历史 Run 参数；实际运行参数在 Run 快照中。
+- `PATCH /skills/{id}/config`：需 CSRF、可信 Origin、Idempotency-Key 和 expected_revision；支持 enabled/config，拒绝停用基础或场景、未知参数、版本冲突及过期修订。相同请求重试返回原响应，JSON 对象键顺序不影响幂等判断。配置版本变化会显示 migration_required，确认参数并保存后方可解析。
+- `POST /skills/resolve`：带 CSRF 的计划预览；后端固定补齐四项基础，只允许一个场景。自动选择是显式 Manifest 规则，记录选择原因，不宣称已运行 LLM Planner；不创建 Run、不调用模型。
+
+内部 `RunPreparation.prepare` 在同一事务锁定 Thread、检查权限/幂等/活动 Run、冻结技能快照并保存用户消息；已通过真实数据库并发和重试测试。它尚未接入公共执行入口，前端开始分析保持禁用。
+
+契约变更后运行 `npm run api:types`，从 FastAPI OpenAPI 生成并格式化 `apps/web/src/types/api.generated.ts`。页面只通过 services 访问 API；TanStack Query 管理请求和会话状态，Zustand 保存草稿、模式和技能选择；切换账户及登出清理私有缓存及选择状态。
 
 ## 外部 API 配置验证
 
@@ -103,6 +110,6 @@ uv run python scripts/check_providers.py
 
 ## 视觉与后续范围
 
-九张原始图保留于 `references/`，标准英文副本在 `assets/references/`；manifest 保存文件名映射和哈希。首页实现 Shell 与交互基线：白色/浅灰/深绿、232px 侧栏、欢迎区、输入框、六场景、模板及真实近期项目；侧栏没有场景技能。我的调研当前提供基础列表与项目保存，其完整指标/活动布局在 Slice 5 接入。其余业务页面明确禁用，场景卡仍只作视觉预览，正式单选与 Registry 在 Slice 2 接入。没有虚构运营统计、评论或报告。
+九张原始图保留于 `references/`，标准英文副本在 `assets/references/`；manifest 保存文件名映射和哈希。首页采用白色/浅灰/深绿、232px 侧栏、欢迎区、输入框、六场景、模板及真实近期项目；侧栏没有场景技能。技能中心遵循原图 07 的概览、筛选、分类卡片结构，实际展示 6/4/3；版本/工具/Schema 及配置有真实服务。没有复制原图虚构使用量或多余行业技能。我的调研完整指标/活动布局在 Slice 5 接入，其余业务页面明确禁用。没有虚构运营统计、评论或报告。
 
 用户新增性能要求已同步 PRD/TECHNICAL/prompt：Slice 3 的产品、定价、用户评价 LLM 必须并发，有全局并发限制、单请求超时、Run 总预算；SWOT、Writer、Reviewer 按数据依赖汇合。需在后续提供并发重叠、截止时间和真实端到端报告验收证据。

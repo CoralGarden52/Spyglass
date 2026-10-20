@@ -13,6 +13,7 @@ dependencies = [
   "redis>=5.2,<8",
   "argon2-cffi>=25,<26",
   "email-validator>=2.2,<3",
+  "pyyaml>=6.0.2,<7",
 ]
 
 [dependency-groups]
@@ -23,6 +24,7 @@ dev = [
     "ruff>=0.11,<1",
     "mypy>=1.15,<2",
     "httpx2>=2.15.1",
+    "types-pyyaml>=6,<7",
 ]
 
 [tool.pytest.ini_options]

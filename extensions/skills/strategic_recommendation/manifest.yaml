@@ -1,0 +1,32 @@
+schema_version: 1
+id: strategic_recommendation
+name: 战略建议分析
+description: 整合四项基础分析，形成有依据、可行动且标注风险的战略建议。
+version: 0.1.0
+kind: advanced
+entrypoint: SKILL.md
+applies_to:
+- analyst
+requires:
+- product_capability
+- pricing_analysis
+- user_sentiment
+- swot_analysis
+allowed_tools:
+- evidence_search
+- knowledge_retrieval
+input_schema: DependentAnalysisInput
+output_schema: StrategyResult
+config_schema: AnalysisConfig
+dimensions:
+- 机会
+- 风险
+- 建议与行动
+source_priorities:
+- 已标准化证据
+- 上游分析产物
+review_aspects:
+- 功能
+- 价格
+- 体验
+recommended_advanced: {}

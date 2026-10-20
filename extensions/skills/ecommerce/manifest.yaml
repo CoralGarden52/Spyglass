@@ -1,0 +1,42 @@
+schema_version: 1
+id: ecommerce
+name: 电商行业
+description: 比较平台商家生态、交易体验、履约物流、佣金与服务差异。
+version: 0.1.0
+kind: scenario
+entrypoint: SKILL.md
+applies_to:
+- planner
+- collector
+- analyst
+requires: []
+allowed_tools:
+- bocha_search
+- web_fetch
+input_schema: ScenarioInput
+output_schema: ScenarioContext
+config_schema: ScenarioConfig
+dimensions:
+- 商家生态
+- 交易
+- 履约物流
+- 佣金
+- 平台服务
+source_priorities:
+- 平台商家规则
+- 官方费用与履约说明
+- 公开商家及买家评价
+review_aspects:
+- 交易体验
+- 物流
+- 价格
+- 售后
+- 可靠性
+recommended_advanced:
+  quick: []
+  standard:
+  - business_model
+  deep:
+  - market_landscape
+  - business_model
+  - strategic_recommendation

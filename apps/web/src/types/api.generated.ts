@@ -198,10 +198,92 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/skills': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** List Skills */
+    get: operations['list_skills_api_v1_skills_get'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/skills/resolve': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Resolve Skills
+     * @description Read-only plan preview; does not create or execute a Run.
+     */
+    post: operations['resolve_skills_api_v1_skills_resolve_post'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/skills/{skill_id}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Detail */
+    get: operations['detail_api_v1_skills__skill_id__get'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/skills/{skill_id}/config': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    /** Config */
+    patch: operations['config_api_v1_skills__skill_id__config_patch'];
+    trace?: never;
+  };
 }
 export type webhooks = Record<string, never>;
 export interface components {
   schemas: {
+    /** ConfigUpdate */
+    ConfigUpdate: {
+      /** Enabled */
+      enabled?: boolean | null;
+      /** Config */
+      config?: {
+        [key: string]: unknown;
+      } | null;
+      /** Expected Revision */
+      expected_revision: number;
+    };
     /** Dependencies */
     Dependencies: {
       /**
@@ -458,6 +540,231 @@ export interface components {
       password: string;
       /** Display Name */
       display_name: string;
+    };
+    /** Resolution */
+    Resolution: {
+      /**
+       * Schema Version
+       * @default 1
+       * @constant
+       */
+      schema_version: 1;
+      /** Skills */
+      skills: components['schemas']['Snapshot'][];
+      /**
+       * Auto Selection Strategy
+       * @enum {string}
+       */
+      auto_selection_strategy: 'manifest_rules' | 'manual';
+    };
+    /** ResolutionResult */
+    ResolutionResult: {
+      /**
+       * Schema Version
+       * @default 1
+       * @constant
+       */
+      schema_version: 1;
+      data: components['schemas']['Resolution'];
+    };
+    /** Selection */
+    Selection: {
+      /**
+       * Mode
+       * @default standard
+       * @enum {string}
+       */
+      mode: 'quick' | 'standard' | 'deep';
+      /**
+       * Scenario Skill Id
+       * @default general_analysis
+       * @enum {string}
+       */
+      scenario_skill_id:
+        | 'general_analysis'
+        | 'ecommerce'
+        | 'internet_product'
+        | 'hardware_iot'
+        | 'ai_llm'
+        | 'finance';
+      /** Advanced Skill Ids */
+      advanced_skill_ids?: ('market_landscape' | 'business_model' | 'strategic_recommendation')[];
+      /**
+       * Advanced Skill Selection
+       * @default manual
+       * @enum {string}
+       */
+      advanced_skill_selection: 'manual' | 'auto';
+    };
+    /** SkillDetail */
+    SkillDetail: {
+      /** Id */
+      id: string;
+      /** Name */
+      name: string;
+      /** Description */
+      description: string;
+      /**
+       * Kind
+       * @enum {string}
+       */
+      kind: 'scenario' | 'core' | 'advanced';
+      /** Version */
+      version: string;
+      /**
+       * Schema Version
+       * @default 1
+       * @constant
+       */
+      schema_version: 1;
+      /** Manifest Checksum */
+      manifest_checksum: string;
+      /** Is System Required */
+      is_system_required: boolean;
+      /** Enabled */
+      enabled: boolean;
+      /** Revision */
+      revision: number;
+      /** Config Version */
+      config_version: string;
+      /**
+       * Config Status
+       * @default current
+       * @enum {string}
+       */
+      config_status: 'current' | 'migration_required';
+      /** Config */
+      config: {
+        [key: string]: unknown;
+      };
+      /** Allowed Tools */
+      allowed_tools: string[];
+      /** Applies To */
+      applies_to: string[];
+      /** Requires */
+      requires: string[];
+      /** Dimensions */
+      dimensions: string[];
+      /** Instructions */
+      instructions: string;
+      /** Input Json Schema */
+      input_json_schema: {
+        [key: string]: unknown;
+      };
+      /** Output Json Schema */
+      output_json_schema: {
+        [key: string]: unknown;
+      };
+      /** Config Json Schema */
+      config_json_schema: {
+        [key: string]: unknown;
+      };
+    };
+    /** SkillList */
+    SkillList: {
+      /**
+       * Schema Version
+       * @default 1
+       * @constant
+       */
+      schema_version: 1;
+      /** Data */
+      data: components['schemas']['SkillView'][];
+    };
+    /** SkillResult */
+    SkillResult: {
+      /**
+       * Schema Version
+       * @default 1
+       * @constant
+       */
+      schema_version: 1;
+      data: components['schemas']['SkillDetail'];
+    };
+    /** SkillView */
+    SkillView: {
+      /** Id */
+      id: string;
+      /** Name */
+      name: string;
+      /** Description */
+      description: string;
+      /**
+       * Kind
+       * @enum {string}
+       */
+      kind: 'scenario' | 'core' | 'advanced';
+      /** Version */
+      version: string;
+      /**
+       * Schema Version
+       * @default 1
+       * @constant
+       */
+      schema_version: 1;
+      /** Manifest Checksum */
+      manifest_checksum: string;
+      /** Is System Required */
+      is_system_required: boolean;
+      /** Enabled */
+      enabled: boolean;
+      /** Revision */
+      revision: number;
+      /** Config Version */
+      config_version: string;
+      /**
+       * Config Status
+       * @default current
+       * @enum {string}
+       */
+      config_status: 'current' | 'migration_required';
+      /** Config */
+      config: {
+        [key: string]: unknown;
+      };
+      /** Allowed Tools */
+      allowed_tools: string[];
+      /** Applies To */
+      applies_to: string[];
+      /** Requires */
+      requires: string[];
+      /** Dimensions */
+      dimensions: string[];
+    };
+    /** Snapshot */
+    Snapshot: {
+      /**
+       * Schema Version
+       * @default 1
+       * @constant
+       */
+      schema_version: 1;
+      /** Id */
+      id: string;
+      /**
+       * Kind
+       * @enum {string}
+       */
+      kind: 'scenario' | 'core' | 'advanced';
+      /** Version */
+      version: string;
+      /** Manifest Checksum */
+      manifest_checksum: string;
+      /**
+       * Selection Source
+       * @enum {string}
+       */
+      selection_source: 'manual' | 'auto' | 'required';
+      /** Selection Reason */
+      selection_reason: string;
+      /** Config */
+      config: {
+        [key: string]: unknown;
+      };
+      /** Allowed Tools */
+      allowed_tools: string[];
+      /** Requires */
+      requires: string[];
     };
     /** TenantView */
     TenantView: {
@@ -1596,6 +1903,392 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['MessageList'];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  list_skills_api_v1_skills_get: {
+    parameters: {
+      query?: {
+        kind?: ('scenario' | 'core' | 'advanced') | null;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['SkillList'];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  resolve_skills_api_v1_skills_resolve_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['Selection'];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ResolutionResult'];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  detail_api_v1_skills__skill_id__get: {
+    parameters: {
+      query?: {
+        version?: string | null;
+      };
+      header?: never;
+      path: {
+        skill_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['SkillResult'];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  config_api_v1_skills__skill_id__config_patch: {
+    parameters: {
+      query?: never;
+      header: {
+        'Idempotency-Key': string;
+      };
+      path: {
+        skill_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ConfigUpdate'];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['SkillResult'];
         };
       };
       /** @description Unauthorized */

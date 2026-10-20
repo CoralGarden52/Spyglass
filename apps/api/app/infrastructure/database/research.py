@@ -92,6 +92,7 @@ class Run(Base):
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     error_code: Mapped[str | None] = mapped_column(String(80))
+    request_hash: Mapped[str | None] = mapped_column(String(64))
     __table_args__ = (
         UniqueConstraint("tenant_id", "id"),
         UniqueConstraint("tenant_id", "thread_id", "id", name="uq_run_tenant_thread_id"),

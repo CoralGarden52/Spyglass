@@ -1,0 +1,33 @@
+schema_version: 1
+id: pricing_analysis
+name: 定价策略分析
+description: 对照真实套餐价格、币种、计费单位、限制和适用人群，保留采集时间。
+version: 0.1.0
+kind: core
+entrypoint: SKILL.md
+applies_to:
+- analyst
+requires:
+- normalized_evidence
+allowed_tools:
+- evidence_search
+- knowledge_retrieval
+input_schema: EvidenceInput
+output_schema: PricingResult
+config_schema: AnalysisConfig
+dimensions:
+- 套餐
+- 币种
+- 计费单位
+- 限制
+- 适用用户
+source_priorities:
+- 已标准化证据
+- 上游分析产物
+review_aspects:
+- 功能
+- 性能
+- 价格
+- 易用性
+- 可靠性
+recommended_advanced: {}

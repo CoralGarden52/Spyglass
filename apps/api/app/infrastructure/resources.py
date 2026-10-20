@@ -35,7 +35,7 @@ class Resources:
     async def check_migration(self) -> None:
         async with self.engine.connect() as connection:
             result = await connection.scalar(text("SELECT version_num FROM alembic_version"))
-            if result != "0002_auth_workspace":
+            if result != "0003_skill_registry":
                 raise RuntimeError("Migration required")
 
     async def check_redis(self) -> None:

@@ -1,0 +1,42 @@
+schema_version: 1
+id: internet_product
+name: 互联网产品
+description: 聚焦核心使用体验、增长路径、商业化和公开可验证的用户反馈。
+version: 0.1.0
+kind: scenario
+entrypoint: SKILL.md
+applies_to:
+- planner
+- collector
+- analyst
+requires: []
+allowed_tools:
+- bocha_search
+- web_fetch
+input_schema: ScenarioInput
+output_schema: ScenarioContext
+config_schema: ScenarioConfig
+dimensions:
+- 核心体验
+- 增长
+- 活跃与留存
+- 商业化
+- 生态
+source_priorities:
+- 官方帮助文档
+- 公开财报及公告
+- 可定位用户评价
+review_aspects:
+- 功能
+- 性能
+- 易用性
+- 可靠性
+- 价格
+recommended_advanced:
+  quick: []
+  standard:
+  - market_landscape
+  deep:
+  - market_landscape
+  - business_model
+  - strategic_recommendation

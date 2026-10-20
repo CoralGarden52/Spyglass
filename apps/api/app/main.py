@@ -5,10 +5,12 @@ from uuid import uuid4
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.agent.skills.registry import SkillRegistry
 from app.api.auth import router as auth_router
 from app.api.health import router
 from app.api.research import router as research_router
-from app.core.config import Settings
+from app.api.skills import router as skills_router
+from app.core.config import ROOT, Settings
 from app.core.errors import ErrorResponse, install_error_handlers
 from app.infrastructure.resources import Resources
 
@@ -21,6 +23,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         resources = Resources(config)
         application.state.settings = config
         application.state.resources = resources
+        application.state.skills = SkillRegistry.from_directory(ROOT / "extensions/skills")
         try:
             yield
         finally:
@@ -37,7 +40,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     application.add_middleware(
         CORSMiddleware,
         allow_origins=config.cors_origins,
-        allow_methods=["GET", "POST"],
+        allow_methods=["GET", "POST", "PATCH"],
         allow_headers=["Content-Type", "X-CSRF-Token", "Idempotency-Key"],
         allow_credentials=True,
         expose_headers=["X-Request-ID"],
@@ -59,6 +62,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     application.include_router(router)
     application.include_router(auth_router)
     application.include_router(research_router)
+    application.include_router(skills_router)
     return application
 
 

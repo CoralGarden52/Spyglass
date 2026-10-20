@@ -1,0 +1,43 @@
+schema_version: 1
+id: finance
+name: 金融行业
+description: 比较金融服务、收费、风控、隐私、合规与客户信任的公开信息。
+version: 0.1.0
+kind: scenario
+entrypoint: SKILL.md
+applies_to:
+- planner
+- collector
+- analyst
+requires: []
+allowed_tools:
+- bocha_search
+- web_fetch
+input_schema: ScenarioInput
+output_schema: ScenarioContext
+config_schema: ScenarioConfig
+dimensions:
+- 服务
+- 费用
+- 风控
+- 隐私
+- 合规
+- 客户信任
+source_priorities:
+- 官方费率及条款
+- 监管公开文件
+- 可定位客户反馈
+review_aspects:
+- 费用
+- 客服
+- 可靠性
+- 隐私
+- 易用性
+recommended_advanced:
+  quick: []
+  standard:
+  - business_model
+  deep:
+  - market_landscape
+  - business_model
+  - strategic_recommendation

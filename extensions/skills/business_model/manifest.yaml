@@ -1,0 +1,31 @@
+schema_version: 1
+id: business_model
+name: 商业模式分析
+description: 结合产品与定价证据分析收入、成本、渠道及变现方式。
+version: 0.1.0
+kind: advanced
+entrypoint: SKILL.md
+applies_to:
+- analyst
+requires:
+- product_capability
+- pricing_analysis
+allowed_tools:
+- evidence_search
+- knowledge_retrieval
+input_schema: DependentAnalysisInput
+output_schema: BusinessResult
+config_schema: AnalysisConfig
+dimensions:
+- 收入路径
+- 成本
+- 渠道
+- 变现
+source_priorities:
+- 已标准化证据
+- 上游分析产物
+review_aspects:
+- 功能
+- 价格
+- 体验
+recommended_advanced: {}

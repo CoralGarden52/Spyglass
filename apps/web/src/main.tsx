@@ -5,6 +5,7 @@ import { MotionConfig } from 'framer-motion';
 import { createBrowserRouter, RouterProvider } from 'react-router';
 import { AppShell } from './layouts/AppShell';
 import { Workbench } from './pages/Workbench';
+import { SkillCenter, SkillDetails } from './pages/SkillCenter';
 import { AuthPage } from './pages/AuthPage';
 import { AccountSettings } from './pages/AccountSettings';
 import { ResearchDetail, ResearchProjects } from './pages/ResearchProjects';
@@ -26,6 +27,8 @@ const router = createBrowserRouter([
           { path: 'research', Component: ResearchProjects },
           { path: 'research/:id', Component: ResearchDetail },
           { path: 'settings', Component: AccountSettings },
+          { path: 'skills', Component: SkillCenter },
+          { path: 'skills/:id', Component: SkillDetails },
         ],
       },
     ],

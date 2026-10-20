@@ -1,0 +1,42 @@
+schema_version: 1
+id: hardware_iot
+name: 硬件与智能设备
+description: 分析硬件性能、软硬协同、兼容性、售后和公开供应链信息。
+version: 0.1.0
+kind: scenario
+entrypoint: SKILL.md
+applies_to:
+- planner
+- collector
+- analyst
+requires: []
+allowed_tools:
+- bocha_search
+- web_fetch
+input_schema: ScenarioInput
+output_schema: ScenarioContext
+config_schema: ScenarioConfig
+dimensions:
+- 性能参数
+- 软硬协同
+- 兼容性
+- 售后
+- 供应链
+source_priorities:
+- 官方规格表
+- 认证及兼容性文档
+- 真实测试与用户评价
+review_aspects:
+- 性能
+- 续航
+- 兼容性
+- 售后
+- 可靠性
+recommended_advanced:
+  quick: []
+  standard:
+  - market_landscape
+  deep:
+  - market_landscape
+  - business_model
+  - strategic_recommendation

@@ -114,12 +114,24 @@ entrypoint: SKILL.md
 applies_to: [analyst]
 requires: [normalized_evidence]
 allowed_tools: [evidence_search, knowledge_retrieval]
-input_schema: ReviewAnalysisInput
-output_schema: ReviewAnalysisResult
-config_schema: ReviewAnalysisConfig
+schema_version: 1
+description: 抽取真实评论的整体四分类与方面级情感，报告去重样本、分母与来源偏差。
+input_schema: EvidenceInput
+output_schema: SentimentResult
+config_schema: SentimentConfig
+dimensions: [整体四分类, 方面级情感, 去重, 样本与偏差]
+source_priorities: [具有公开定位的真实评论]
+review_aspects: [功能, 性能, 价格, 易用性]
+recommended_advanced: {quick: [], standard: [], deep: []}
 ```
 
 Registry 验证：唯一 ID、SemVer/版本、文件合法性、输入输出 Schema、声明工具是否在白名单、依赖是否可解析、必选 Skill 禁用保护。`SKILL.md` 包含专业指导与来源/输出约束，不包含真实密钥、不授予系统权限。加载顺序为元数据发现 → 按需读取内容 → 审核版本 → 注入相关 Agent 上下文。
+
+Slice 2 已实现：启动时校验所有定义文件及 Schema 并计算完整内容校验和；后续 Agent 上下文只注入选中版本。`skills` 以 `(id,version)` 为主键，存 Manifest、指导和三个 Schema；数据库触发器禁止修改/删除旧版本。相同版本不同校验和返回 409，必须升版。租户配置含 skill_version、revision；写入以租户行锁、修订号和规范 JSON 请求指纹防止并发覆盖与重复写入。版本变化显示 `config_status=migration_required`，新版本参数须显式确认保存，未确认的选中技能不能解析。历史详情返回旧定义及默认配置，实际运行参数以 Run 快照为准。
+
+新增 API（均 `/api/v1`、认证 TenantContext）：GET `/skills`（kind 过滤）、GET `/skills/{id}`（version 查询）、PATCH `/skills/{id}/config`（CSRF、Idempotency-Key、expected_revision）、POST `/skills/resolve`（CSRF 保护的预览）。返回 envelope 和 Snapshot 声明 schema_version=1；统一错误协议保持不变。配置 Schema 拒绝额外字段和超范围数值，四基础及场景不能停用；客户端不能提供可删改的 core 列表。自动增强选择目前使用 Manifest 的 recommended_advanced 场景/模式规则，返回 manifest_rules 与逐项原因；真实 Planner 留在 Slice 3。
+
+切片依赖说明：Slice 2 要求冻结 Run Skill 版本，公共 Run 创建入口安排在 Slice 4。因此本切片只落地内部 RunPreparation 事务，保存真实 pending Run、请求指纹与用户消息，线程行锁和活动部分唯一索引保证同 Thread 串行；幂等重放返回原快照。没有提前提供无法执行的公共 Run API，前端计划预览不创建 Run，也不调用 LLM。
 
 ### 4.3 分析产物依赖
 
@@ -244,12 +256,13 @@ MVP 至少建立：
 | `research_projects` | id、tenant_id、created_by、title、mode、scenario_skill_id、status、created_at |
 | `threads` | id、tenant_id、project_id、created_by、title、created_at |
 | `messages` | id、tenant_id、thread_id、run_id?、role、content_json、created_at、sequence |
-| `runs` | id、tenant_id、project_id、thread_id、user_id、status、skills_snapshot_json、requested_at、started_at?、finished_at?、error_code?、usage_json、idempotency_key |
+| `runs` | id、tenant_id、project_id、thread_id、user_id、status、skills_snapshot_json、requested_at、started_at?、finished_at?、error_code?、usage_json、idempotency_key、request_hash? |
 | `run_events` | id、tenant_id、run_id、seq、type、schema_version、payload_json、created_at；unique(run_id,seq) |
 | `run_steps` | id、tenant_id、run_id、node、status、started_at、ended_at?、usage_json、artifact_refs |
 | `tool_calls` | id、tenant_id、run_id、step_id、tool_name、args_redacted_json、result_ref、status、idempotency_key、usage_json |
-| `skills` | id、kind、version、manifest_checksum、metadata_json、is_system_required |
-| `skill_configs` | tenant_id、skill_id、enabled、config_json；禁止关闭四基础 |
+| `skills` | (id,version) 主键、kind、manifest_checksum、metadata_json、instructions、is_system_required；定义不可更新/删除 |
+| `skill_configs` | (tenant_id,skill_id) 主键、skill_version、enabled、config_json、revision、updated_at；禁止关闭四基础 |
+| `skill_config_mutations` | (tenant_id,user_id,idempotency_key) 主键、request_hash、response_json、created_at；租户成员复合外键 |
 | `competitors` | id、tenant_id、canonical_name、website?、profile_json、updated_at |
 | `project_competitors` | project_id、competitor_id、tenant_id |
 | `sources` | id、tenant_id、source_type、url?、title、published_at?、collected_at、content_hash、content_ref、metadata_json |

@@ -35,9 +35,11 @@ export function AppShell() {
   const location = useLocation();
   const pageTitle = location.pathname.startsWith('/research')
     ? '我的调研'
-    : location.pathname === '/settings'
-      ? '账户与工作空间'
-      : '工作台';
+    : location.pathname.startsWith('/skills')
+      ? '技能中心'
+      : location.pathname === '/settings'
+        ? '账户与工作空间'
+        : '工作台';
   return (
     <div className="app-shell">
       <aside className={`sidebar ${menuOpen ? 'is-open' : ''}`} aria-label="全局侧边栏">
@@ -54,9 +56,9 @@ export function AppShell() {
         </button>
         <nav aria-label="主导航">
           {navigation.map(({ name, icon: Icon }, index) =>
-            index <= 1 ? (
+            index <= 1 || index === 5 ? (
               <NavLink
-                to={index === 0 ? '/' : '/research'}
+                to={index === 0 ? '/' : index === 5 ? '/skills' : '/research'}
                 end={index === 0}
                 className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
                 key={name}
