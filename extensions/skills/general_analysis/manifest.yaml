@@ -2,7 +2,7 @@ schema_version: 1
 id: general_analysis
 name: 通用分析
 description: 适用于多行业的综合竞品分析，关注定位、目标用户、产品差异和商业化。
-version: 0.1.0
+version: 0.1.1
 kind: scenario
 entrypoint: SKILL.md
 applies_to:
@@ -11,7 +11,7 @@ applies_to:
 - analyst
 requires: []
 allowed_tools:
-- bocha_search
+- deepseek_search
 - web_fetch
 input_schema: ScenarioInput
 output_schema: ScenarioContext

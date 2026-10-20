@@ -2,7 +2,7 @@
 
 竞品分析 Agent 工作台。产品、技术、视觉和任务顺序分别以根目录 `PRD.md`、`TECHNICAL.md`、`DESIGN.md`、`prompt.md` 为准。
 
-当前范围：**Slice 0–3**。认证、个人 Tenant、项目/Thread、13 个版本化 Skill 已实现；现已接入真实 LangGraph 研究图、DeepSeek 兼容模型/Bocha、受限网页读取、证据与结构化报告持久化、Reviewer 定向返工及 PostgreSQL Checkpoint。产品/定价/用户评价并发，SWOT 和无相互依赖的增强项并发；模型/Run 有超时和容量限制。项目详情可读取已保存报告、证据、产物修订及真实调用记录。
+当前范围：**Slice 0–3**。认证、个人 Tenant、项目/Thread、13 个版本化 Skill 已实现；现已接入真实 LangGraph 研究图、DeepSeek 兼容模型/DeepSeek Search、受限网页读取、证据与结构化报告持久化、Reviewer 定向返工及 PostgreSQL Checkpoint。产品/定价/用户评价并发，SWOT 和无相互依赖的增强项并发；模型/Run 有超时和容量限制。项目详情可读取已保存报告、证据、产物修订及真实调用记录。
 
 **公共 Run 创建、SSE 和前端输入到执行入口仍属于 Slice 4**；当前开始分析保持禁用，不把内部执行器当作已完成前端研究链路。自动增强选择仍是明确标识的清单规则，真实 Planner 当前负责竞品与研究范围。PDF、完整报告/竞品/Trace 中心等仍待后续切片。
 
@@ -124,12 +124,21 @@ uv run python scripts/check_research.py
 uv run python scripts/check_providers.py
 ```
 
-这是**手动真实联网**诊断，会对 `.env` 中每组 `*_API_KEY` 发一次小请求，产生少量供应商用量；不会在普通测试/构建中执行。支持 Bocha 搜索与 OpenAI 兼容模型接口的 JSON/SSE 响应；模型请求并发执行，总超时 65 秒。只保存脱敏状态、真实 usage 与耗时到 `.artifacts/provider-check.json`，不记录请求头、密钥或模型隐藏推理。它不是应用的 ModelProvider，也不是报告生成实现。
+这是**手动真实联网**诊断，会对 `.env` 中指定的模型供应商发一次小请求，并使用 `DEEPSEEK3_API_KEY` 验证 DeepSeek Search，产生少量供应商用量；不会在普通测试/构建中执行。仅支持 DeepSeek Search 搜索与 OpenAI 兼容模型接口的 JSON/SSE 响应；模型请求并发执行，总超时 65 秒。只保存脱敏状态、真实 usage 与耗时到 `.artifacts/provider-check.json`，不记录请求头、密钥或模型隐藏推理。它不是应用的 ModelProvider，也不是报告生成实现。
 
-2026-10-20 已真实验证 Bocha、DeepSeek、GLM、DeepSeek2 均 HTTP 200 且有有效结果。两组 DeepSeek 原模型名不可用，已在本地 `.env` 修正为供应商实际列出的 `deepseek-v4.1-flash`；密钥未改。部分网关即使 `stream=false` 仍返回 SSE。简短响应的耗时不代表报告生成耗时，不将当次供应商成功作为长期可用性保证。
+2026-10-20 早期历史验证（Bocha 已移除）：当时已验证 Bocha、DeepSeek、GLM、DeepSeek2 均 HTTP 200 且有有效结果。两组 DeepSeek 原模型名不可用，已在本地 `.env` 修正为供应商实际列出的 `deepseek-v4.1-flash`；密钥未改。部分网关即使 `stream=false` 仍返回 SSE。简短响应的耗时不代表报告生成耗时，不将当次供应商成功作为长期可用性保证。
 
 ## 视觉与后续范围
 
 九张原始图保留于 `references/`，标准英文副本在 `assets/references/`；manifest 保存文件名映射和哈希。首页采用白色/浅灰/深绿、232px 侧栏、欢迎区、输入框、六场景、模板及真实近期项目；侧栏没有场景技能。技能中心遵循原图 07 的概览、筛选、分类卡片结构，实际展示 6/4/3；版本/工具/Schema 及配置有真实服务。没有复制原图虚构使用量或多余行业技能。我的调研完整指标/活动布局在 Slice 5 接入，其余业务页面明确禁用。没有虚构运营统计、评论或报告。
 
 用户新增性能要求已同步 PRD/TECHNICAL/prompt：Slice 3 的产品、定价、用户评价 LLM 已并发，有全局并发限制、单请求超时、Run 总预算；SWOT、Writer、Reviewer 按数据依赖汇合。实际并发重叠、截止时间和后端联网结果见 Slice 3 验收记录；前端提交到报告的完整链路仍由 Slice 4 接入。
+
+
+## DeepSeek Search 原生来源
+
+按用户 2026-10-20 要求，搜索已改为 DeepSeek 官方 `/v1/tools/search`，使用 `DEEPSEEK3_API_KEY`；聊天模型仍使用已有模型配置。应用不再读取 BOCHA 配置，也没有 Bocha 网络回退。本地旧 `.env` 可保留，示例环境文件已移除 Bocha 项。
+
+LLM 内容只使用 `summary`；列表使用 `snippet`。`date` 是唯一发布时间来源，未知显示未知，有日期的有效证据优先近期。保存原始 `rerank_score`（0–3）和 `authority`（-1 未知、0–4）；来源置信度参考指数采用 70% 相关性归一化 + 30% 权威度归一化，未知评分不补值。这不代表事实真实性概率。相关性低于 1.5 或缺少长摘要的候选仍可查看，但不进入分析。详细协议见 TECHNICAL 第 16 节。
+
+6 场景 Skill 升版 0.1.1，历史版本不改写。此变更没有宣称真实报告质量验收已通过：此前模型 3000 Token 输出截断的问题仍需单独修复，前端公开 Run/SSE 入口仍待 Slice 4。

@@ -30,7 +30,7 @@ from app.main import create_app  # noqa: E402
 def main() -> None:
     settings = Settings()
     if (
-        not settings.bocha_api_key.get_secret_value()
+        not settings.deepseek3_api_key.get_secret_value()
         or not settings.deepseek_api_key.get_secret_value()
     ):
         raise SystemExit("Required research providers are unconfigured")

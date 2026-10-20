@@ -28,7 +28,7 @@ class Dependencies(BaseModel):
 
 class ProviderConfiguration(BaseModel):
     deepseek: Literal["configured", "unconfigured"]
-    bocha: Literal["configured", "unconfigured"]
+    deepseek_search: Literal["configured", "unconfigured"]
 
 
 class ReadinessResponse(BaseModel):
@@ -67,6 +67,8 @@ async def get_readiness(resources: HealthResources, settings: Settings) -> Readi
             deepseek="configured"
             if settings.deepseek_api_key.get_secret_value()
             else "unconfigured",
-            bocha="configured" if settings.bocha_api_key.get_secret_value() else "unconfigured",
+            deepseek_search="configured"
+            if settings.deepseek3_api_key.get_secret_value()
+            else "unconfigured",
         ),
     )

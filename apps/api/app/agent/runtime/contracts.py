@@ -35,7 +35,7 @@ class ResearchPlan(Contract):
 
 
 class SearchTask(Contract):
-    query: str = Field(min_length=2, max_length=400)
+    query: str = Field(min_length=1, max_length=128, pattern=r"\S")
     category: Literal["product", "pricing", "review", "market"]
 
 

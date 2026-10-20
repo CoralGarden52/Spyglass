@@ -456,6 +456,7 @@ export interface components {
       origin: string;
       /** Permission Note */
       permission_note: string;
+      search_result?: components['schemas']['SearchResultMetadata'] | null;
     };
     /** EvidenceResponse */
     EvidenceResponse: {
@@ -674,10 +675,10 @@ export interface components {
        */
       deepseek: 'configured' | 'unconfigured';
       /**
-       * Bocha
+       * Deepseek Search
        * @enum {string}
        */
-      bocha: 'configured' | 'unconfigured';
+      deepseek_search: 'configured' | 'unconfigured';
     };
     /** ReadinessResponse */
     ReadinessResponse: {
@@ -798,6 +799,8 @@ export interface components {
       artifact_history: components['schemas']['ArtifactView'][];
       /** Calls */
       calls: components['schemas']['AuditView'][];
+      /** Search Sources */
+      search_sources?: components['schemas']['SearchSourceView'][];
     };
     /** ReportResponse */
     ReportResponse: {
@@ -902,6 +905,60 @@ export interface components {
       status: 'passed' | 'repair' | 'needs_review';
       /** Before Digest */
       before_digest: string;
+    };
+    /**
+     * SearchResultMetadata
+     * @description Native provider values; the confidence index is not a truth probability.
+     */
+    SearchResultMetadata: {
+      /** Title */
+      title: string;
+      /** Url */
+      url: string;
+      /**
+       * Snippet
+       * @default
+       */
+      snippet: string;
+      /**
+       * Summary
+       * @default
+       */
+      summary: string;
+      /**
+       * Content
+       * @default
+       */
+      content: string;
+      /** Rerank Score */
+      rerank_score?: number | null;
+      /**
+       * Authority
+       * @default -1
+       */
+      authority: number;
+      /** Date */
+      date?: string | null;
+      /** Site Name */
+      site_name?: string | null;
+      /** Site Icon */
+      site_icon?: string | null;
+      /** Source Confidence */
+      readonly source_confidence: number | null;
+      /** Confidence Policy */
+      readonly confidence_policy: string;
+      /** High Quality */
+      readonly high_quality: boolean;
+      /** High Authority */
+      readonly high_authority: boolean;
+    };
+    /** SearchSourceView */
+    SearchSourceView: {
+      /** Evidence Id */
+      evidence_id: string;
+      /** Validity Status */
+      validity_status: string;
+      result: components['schemas']['SearchResultMetadata'];
     };
     /** Selection */
     Selection: {

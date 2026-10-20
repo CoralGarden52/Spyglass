@@ -6,6 +6,7 @@ from typing import Any
 
 from app.agent.runtime.contracts import ModelInput, ModelReply
 from app.agent.tools.registry import ToolRegistry
+from app.domain.search import SearchResultMetadata
 
 QUOTE = "Alpha is fast and easy but expensive."
 SECOND_QUOTE = "Another user says Alpha is reliable."
@@ -29,7 +30,7 @@ class ControlledTools(ToolRegistry):
         if name == "web_fetch":
             return []
         self.search_count += 1
-        return [
+        rows = [
             {
                 "url": f"https://alpha.example/source/{self.search_count}",
                 "title": "CONTROLLED SYNTHETIC FIXTURE",
@@ -41,6 +42,22 @@ class ControlledTools(ToolRegistry):
                 "published_at": None,
             }
         ]
+
+        for row in rows:
+            row["origin"] = "search_summary"
+            row["published_at"] = "2026-10-19T00:00:00Z"
+            row["search_query"] = arguments["query"]
+            row["search_result"] = SearchResultMetadata(
+                title=row["title"],
+                url=row["url"],
+                snippet="Synthetic short UI snippet",
+                summary=row["excerpt"],
+                rerank_score=2.4,
+                authority=4,
+                date="2026-10-19T00:00:00Z",
+                site_name="Controlled fixture",
+            ).model_dump(mode="json")
+        return rows
 
 
 class ControlledModel:

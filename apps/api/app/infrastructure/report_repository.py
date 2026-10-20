@@ -16,6 +16,7 @@ from app.domain.report_schemas import (
     ReportResponse,
     ReportSummary,
 )
+from app.domain.search import SearchResultMetadata, SearchSourceView
 from app.infrastructure.database.knowledge import (
     AnalysisArtifact,
     Evidence,
@@ -79,6 +80,19 @@ class ReportRepository:
                 review_history=[ReviewResult.model_validate(r.payload) for r in reviews],
                 artifact_history=[ArtifactView.model_validate(a) for a in artifacts],
                 calls=[AuditView.model_validate(c) for c in calls],
+                search_sources=[
+                    SearchSourceView(
+                        evidence_id=str(e.id),
+                        validity_status=e.validity_status,
+                        result=SearchResultMetadata.model_validate(e.locator_json["search_result"]),
+                    )
+                    for e in await self.db.scalars(
+                        select(Evidence)
+                        .where(Evidence.run_id == row.run_id, Evidence.tenant_id == self.tenant_id)
+                        .order_by(Evidence.created_at, Evidence.id)
+                    )
+                    if e.locator_json.get("search_result") is not None
+                ],
             )
         )
 
@@ -105,5 +119,8 @@ class ReportRepository:
                 title=source.title,
                 origin=source.origin_type,
                 permission_note=source.permission_note,
+                search_result=SearchResultMetadata.model_validate(row.locator_json["search_result"])
+                if row.locator_json.get("search_result") is not None
+                else None,
             )
         )

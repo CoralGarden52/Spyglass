@@ -61,7 +61,10 @@ class AnalysisNodes:
                 skill["instructions"]
                 + (
                     "\nUse only supplied evidence IDs. Analyze all requested "
-                    "competitors. Do not treat search snippets as full-page "
+                    "competitors. Prefer newer dated sources for time-sensitive facts; use "
+                    "search_scores.date as publication time, not collected_at. Unknown dates "
+                    "stay unknown; explain stale/conflicting facts. Source confidence is an "
+                    "index, not truth probability. Do not treat search summaries as full-page "
                     "verification. Distinguish unavailable data from explicitly "
                     "unsupported functionality. Review classification must reference "
                     "the supplied literal review samples, never create a new sample."

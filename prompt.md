@@ -54,7 +54,7 @@
 
 ### Slice 3 — LangGraph 核心研究闭环
 
-在 `agent/runtime` 实现 typed State、Graph、Checkpoint、Executor；Provider 封装 DeepSeek，ToolRegistry 封装 Bocha/web_fetch/去重/证据检索；实现 Planner/Collector/Normalizer/Analyst/Writer/Reviewer，先从产品能力/价格/用户评价的结构化产物生成有来源的 SWOT；按配置调用增强 Skills。Reporter 生成结构化 Sections 和 Evidence/Claim 映射。
+在 `agent/runtime` 实现 typed State、Graph、Checkpoint、Executor；Provider 封装 DeepSeek，ToolRegistry 封装 DeepSeek Search/web_fetch/去重/证据检索（2026-10-20 用户指定替换 Bocha；搜索内容使用 summary，保留原生评分和 date）；实现 Planner/Collector/Normalizer/Analyst/Writer/Reviewer，先从产品能力/价格/用户评价的结构化产物生成有来源的 SWOT；按配置调用增强 Skills。Reporter 生成结构化 Sections 和 Evidence/Claim 映射。
 
 为 Reviewer 实现结构化 issues、按 `target` 定向返工、返工计数限制及 `needs_review` 降级；准备真实可复现的缺失证据/错误 Schema fixture。用户评价测试包括评论级四分类、方面级不同情绪、去重与真实分母。根据用户 2026-10-20 补充要求，产品能力/定价/用户评价 LLM 调用必须并发，配置并发上限、单调用超时和 Run 总预算；测试真实重叠和截止时间，不用串行执行独立分析来生成报告。
 

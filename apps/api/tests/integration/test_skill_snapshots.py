@@ -123,7 +123,7 @@ def test_snapshot_is_atomic_frozen_and_idempotent(api_client: TestClient) -> Non
     replay = api_client.portal.call(prepare)
     assert replay == first
     assert len(first.skills) == 6
-    assert all(s.version == "0.1.0" for s in first.skills)
+    assert all(s.version == ("0.1.1" if s.kind == "scenario" else "0.1.0") for s in first.skills)
 
     async def inspect():
         async with api_client.app.state.resources.sessions() as db:

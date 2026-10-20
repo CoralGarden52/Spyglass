@@ -6,7 +6,7 @@
 
 实现 Spyglass：具有真实前后端、可用 Skills 和 LangGraph 多 Agent 协作的竞品分析 MVP，为未来多租户、多并发和完整 Harness 保留稳定边界。
 
-**锁定技术选型**：React 19、TypeScript、Vite、TailwindCSS、Zustand、React Router、ReactFlow、ECharts（按需 D3）、Framer Motion；FastAPI、Pydantic、LangGraph Python；PostgreSQL + pgvector + Redis。依赖选用相互兼容的维护版本，生成锁文件；不得未经确认改成 Next.js/NestJS/AgentScope/CrewAI 或额外引入第二套 Agent 编排核心。模型和搜索通过 Provider 接入，初始为 DeepSeek、Bocha。
+**锁定技术选型**：React 19、TypeScript、Vite、TailwindCSS、Zustand、React Router、ReactFlow、ECharts（按需 D3）、Framer Motion；FastAPI、Pydantic、LangGraph Python；PostgreSQL + pgvector + Redis。依赖选用相互兼容的维护版本，生成锁文件；不得未经确认改成 Next.js/NestJS/AgentScope/CrewAI 或额外引入第二套 Agent 编排核心。模型和搜索通过 Provider 接入，当前为 DeepSeek 模型与 DeepSeek Search（2026-10-20 按用户要求移除 Bocha，搜索固定使用 DEEPSEEK3_API_KEY）。
 
 **视觉锁定**：九张 `assets/references/*.png` 是设计基准；不能替换为任意模板/自创风格。删除全局 Sidebar 的「场景技能」卡片区域，放在工作台输入框正下方；技能中心仍保留 Skill 管理。
 

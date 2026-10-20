@@ -1,6 +1,6 @@
 # 电商行业
 
-版本：0.1.0 · 协议：schema_version 1
+版本：0.1.1 · 协议：schema_version 1
 
 ## 目标与范围
 

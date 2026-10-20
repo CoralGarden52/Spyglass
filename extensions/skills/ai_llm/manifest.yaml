@@ -2,7 +2,7 @@ schema_version: 1
 id: ai_llm
 name: AI 与大模型
 description: 对比模型与 Agent 能力、上下文、工具调用、定价、API 和生态。
-version: 0.1.0
+version: 0.1.1
 kind: scenario
 entrypoint: SKILL.md
 applies_to:
@@ -11,7 +11,7 @@ applies_to:
 - analyst
 requires: []
 allowed_tools:
-- bocha_search
+- deepseek_search
 - web_fetch
 input_schema: ScenarioInput
 output_schema: ScenarioContext

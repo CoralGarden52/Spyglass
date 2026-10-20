@@ -14,7 +14,9 @@ SCENARIO_IDS = (
     "finance",
 )
 ADVANCED_IDS = ("market_landscape", "business_model", "strategic_recommendation")
-TOOL_WHITELIST = frozenset({"bocha_search", "web_fetch", "evidence_search", "knowledge_retrieval"})
+TOOL_WHITELIST = frozenset(
+    {"deepseek_search", "bocha_search", "web_fetch", "evidence_search", "knowledge_retrieval"}
+)
 AdvancedID = Literal["market_landscape", "business_model", "strategic_recommendation"]
 SkillKind = Literal["scenario", "core", "advanced"]
 

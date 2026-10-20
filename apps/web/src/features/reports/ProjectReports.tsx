@@ -3,6 +3,29 @@ import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { BookOpen, ExternalLink, RefreshCw, X } from 'lucide-react';
 import { getEvidence, getReport, listProjectReports } from '../../services/reports';
+import type { components } from '../../types/api.generated';
+
+function SearchMetadata({ result }: { result: components['schemas']['SearchResultMetadata'] }) {
+  return (
+    <div className="report-limitations">
+      <p>
+        {result.site_name ?? '站点未知'} · 发布时间：
+        {result.date ? new Date(result.date).toLocaleString('zh-CN') : '未知'}
+      </p>
+      <p>
+        相关性：{result.rerank_score ?? '—'} / 3 · 权威度：
+        {result.authority === -1 ? '未知' : `${result.authority} / 4`} · 来源置信度：
+        {result.source_confidence === null
+          ? '—'
+          : `${(result.source_confidence * 100).toFixed(1)} / 100`}
+      </p>
+      <p className="muted">
+        置信度指数 = 70% × 相关性 / 3 + 30% × 权威度 / 4，不代表事实为真的概率。低于 1.5
+        分的相关性或缺少 summary 时不用于报告；未知日期不推断为近期。
+      </p>
+    </div>
+  );
+}
 
 const statusNames: Record<string, string> = {
   complete: '已完成',
@@ -89,6 +112,7 @@ function SavedReport({ id }: { id: string }) {
     );
   if (!query.data) return null;
   const report = query.data.data;
+  const searchSources = report.search_sources ?? [];
   return (
     <motion.article
       className="persisted-report"
@@ -139,6 +163,25 @@ function SavedReport({ id }: { id: string }) {
           </details>
         </section>
       ))}
+      {searchSources.length > 0 && (
+        <details className="report-audit">
+          <summary>DeepSeek 检索来源（{searchSources.length} 条）</summary>
+          {searchSources.map((source) => (
+            <section key={source.evidence_id}>
+              <button className="text-button" onClick={() => setEvidence(source.evidence_id)}>
+                {source.result.title}
+              </button>
+              <p>{source.result.snippet}</p>
+              <span className="small-badge">
+                {source.validity_status === 'valid'
+                  ? '可用于分析'
+                  : '已排除：相关性不足或缺少长摘要'}
+              </span>
+              <SearchMetadata result={source.result} />
+            </section>
+          ))}
+        </details>
+      )}
       <details className="report-audit">
         <summary>质检与返工记录（{report.review_history.length} 次）</summary>
         {report.review_history.map((review) => (
@@ -227,11 +270,14 @@ function EvidenceDialog({ id, onClose }: { id: string; onClose: () => void }) {
             <>
               <h3>{query.data.data.title}</h3>
               <p className="muted">
-                {query.data.data.origin === 'search_snippet'
+                {['search_snippet', 'search_summary'].includes(query.data.data.origin)
                   ? '搜索摘要，需结合原网页核验'
                   : '公开网页片段'}{' '}
                 · 采集于 {new Date(query.data.data.collected_at).toLocaleString('zh-CN')}
               </p>
+              {query.data.data.search_result && (
+                <SearchMetadata result={query.data.data.search_result} />
+              )}
               <blockquote>{query.data.data.excerpt}</blockquote>
               <p className="muted">{query.data.data.permission_note}</p>
               <a

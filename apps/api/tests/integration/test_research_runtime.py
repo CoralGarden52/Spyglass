@@ -51,6 +51,8 @@ def test_real_graph_persists_parallel_analysis_and_directed_repairs(api_client: 
     report = api_client.get(f"/api/v1/reports/{report_id}").json()["data"]
     assert len(report["content"]["sections"]) == 4
     assert report["run_id"] == str(run_id)
+    assert len(report["search_sources"]) == 3
+    assert report["search_sources"][0]["result"]["source_confidence"] == 0.86
     assert report["content"]["sentiment_summary"]["sample_count"] == 1
     evidence_id = report["content"]["sections"][0]["claims"][0]["evidence_ids"][0]
     assert api_client.get(f"/api/v1/evidence/{evidence_id}").status_code == 200

@@ -2,7 +2,7 @@ schema_version: 1
 id: finance
 name: 金融行业
 description: 比较金融服务、收费、风控、隐私、合规与客户信任的公开信息。
-version: 0.1.0
+version: 0.1.1
 kind: scenario
 entrypoint: SKILL.md
 applies_to:
@@ -11,7 +11,7 @@ applies_to:
 - analyst
 requires: []
 allowed_tools:
-- bocha_search
+- deepseek_search
 - web_fetch
 input_schema: ScenarioInput
 output_schema: ScenarioContext

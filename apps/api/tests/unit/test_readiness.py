@@ -63,6 +63,9 @@ def test_ready_contract_does_not_treat_configured_keys_as_working_research() -> 
         app.state.resources = AvailableResources()
         response = client.get("/api/v1/health/ready")
     assert response.status_code == 200
-    assert response.json()["providers"] == {"deepseek": "configured", "bocha": "unconfigured"}
+    assert response.json()["providers"] == {
+        "deepseek": "configured",
+        "deepseek_search": "unconfigured",
+    }
     assert response.json()["research_available"] is False
     assert "test-only" not in response.text

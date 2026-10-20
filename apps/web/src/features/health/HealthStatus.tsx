@@ -57,7 +57,8 @@ export function HealthStatus() {
           </div>
           <p className="provider-note">
             DeepSeek {data.providers.deepseek === 'configured' ? '已配置（未验证连通）' : '未配置'}{' '}
-            · Bocha {data.providers.bocha === 'configured' ? '已配置（未验证连通）' : '未配置'}
+            · DeepSeek 搜索{' '}
+            {data.providers.deepseek_search === 'configured' ? '已配置（未验证连通）' : '未配置'}
           </p>
         </>
       )}

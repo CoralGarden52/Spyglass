@@ -17,7 +17,7 @@ def test_all_definitions_have_real_contracts_and_content() -> None:
     assert len(registry.all()) == 13
     for item in registry.all():
         assert len(item.instructions) > 200
-        assert item.manifest.version == "0.1.0"
+        assert item.manifest.version == ("0.1.1" if item.manifest.kind == "scenario" else "0.1.0")
         assert len(item.checksum) == 64
         assert SCHEMAS[item.manifest.config_schema]().model_dump()
     assert set(CORE_IDS) == {

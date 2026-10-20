@@ -2,7 +2,7 @@ schema_version: 1
 id: ecommerce
 name: 电商行业
 description: 比较平台商家生态、交易体验、履约物流、佣金与服务差异。
-version: 0.1.0
+version: 0.1.1
 kind: scenario
 entrypoint: SKILL.md
 applies_to:
@@ -11,7 +11,7 @@ applies_to:
 - analyst
 requires: []
 allowed_tools:
-- bocha_search
+- deepseek_search
 - web_fetch
 input_schema: ScenarioInput
 output_schema: ScenarioContext

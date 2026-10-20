@@ -62,10 +62,9 @@ async def check(
         except ValueError:
             result["failure"] = "non_json_response"
             return result
-        if name == "BOCHA":
-            data = body.get("data") or {}
-            pages = (data.get("webPages") or {}).get("value") or []
-            result["ok"] = body.get("code") in (200, "200") and bool(pages)
+        if name == "DEEPSEEK_SEARCH":
+            pages = body.get("results") or []
+            result["ok"] = bool(pages) and all(page.get("summary") for page in pages)
             result["result_count"] = len(pages)
             result["has_source_urls"] = bool(pages) and all(page.get("url") for page in pages)
             if not result["ok"]:
@@ -99,30 +98,29 @@ async def main() -> None:
         timeout=httpx.Timeout(55, connect=10), follow_redirects=False, trust_env=False
     ) as client:
         calls = []
-        for variable, value in values.items():
-            if not variable.endswith("_API_KEY") or not value:
+        if values.get("DEEPSEEK3_API_KEY"):
+            calls.append(
+                check(
+                    client,
+                    "DEEPSEEK_SEARCH",
+                    "https://api.deepseek.com/v1/tools/search",
+                    values["DEEPSEEK3_API_KEY"],
+                    {"query": "DeepSeek 搜索 API", "count": 5, "need_content": False},
+                )
+            )
+        for prefix in ("DEEPSEEK", "GLM", "DEEPSEEK2", "DEEPSEEK3", "GLM2"):
+            value = values.get(f"{prefix}_API_KEY")
+            if not value:
                 continue
-            prefix = variable.removesuffix("_API_KEY")
             base = (values.get(f"{prefix}_BASE_URL") or "").rstrip("/")
-            if prefix == "BOCHA":
-                endpoint = values.get("BOCHA_WEB_SEARCH_ENDPOINT") or f"{base}/v1/web-search"
-                if not endpoint.startswith("https://"):
-                    endpoint = f"{base}/{endpoint.lstrip('/')}"
-                payload: dict[str, Any] = {
-                    "query": "Python programming language official website",
-                    "count": 1,
-                    "summary": False,
-                    "freshness": "noLimit",
-                }
-            else:
-                endpoint = f"{base}/chat/completions"
-                payload = {
-                    "model": values.get(f"{prefix}_MODEL"),
-                    "messages": [{"role": "user", "content": "Reply with exactly OK."}],
-                    "max_tokens": 32,
-                    "stream": True,
-                    "stream_options": {"include_usage": True},
-                }
+            endpoint = f"{base}/chat/completions"
+            payload: dict[str, Any] = {
+                "model": values.get(f"{prefix}_MODEL"),
+                "messages": [{"role": "user", "content": "Reply with exactly OK."}],
+                "max_tokens": 32,
+                "stream": True,
+                "stream_options": {"include_usage": True},
+            }
             calls.append(check(client, prefix, endpoint, value, payload))
         results = await asyncio.gather(*calls)
     output = {"kind": "live_provider_smoke_check", "results": results}

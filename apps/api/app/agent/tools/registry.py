@@ -1,17 +1,21 @@
+import asyncio
+import json
 from typing import Any
 
 import httpx
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ValidationError
 
 from app.agent.skills.contracts import Contract
 from app.agent.tools.fetch import SafeFetcher, validate_url
 from app.core.config import Settings
+from app.domain.search import SearchResultMetadata
 from app.infrastructure.providers.chat import ProviderError, bounded_body
 
 
 class SearchArgs(Contract):
-    query: str = Field(min_length=2, max_length=400)
-    count: int = Field(default=3, ge=1, le=5)
+    query: str = Field(min_length=1, max_length=128, pattern=r"\S")
+    count: int = Field(default=5, ge=1, le=5)
+    need_content: bool = False
 
 
 class FetchArgs(Contract):
@@ -24,7 +28,7 @@ class RetrievalArgs(Contract):
 
 class ToolRegistry:
     schemas: dict[str, type[BaseModel]] = {
-        "bocha_search": SearchArgs,
+        "deepseek_search": SearchArgs,
         "web_fetch": FetchArgs,
         "evidence_search": RetrievalArgs,
         "knowledge_retrieval": RetrievalArgs,
@@ -33,6 +37,9 @@ class ToolRegistry:
     def __init__(self, client: httpx.AsyncClient, settings: Settings):
         self.client, self.settings = client, settings
         self.fetcher = SafeFetcher(client)
+        self.search_gate = asyncio.Semaphore(3)
+        self.search_clock = asyncio.Lock()
+        self.next_search_at = 0.0
 
     async def execute(
         self,
@@ -41,9 +48,13 @@ class ToolRegistry:
         allowed: list[str],
         evidence: list[dict[str, Any]] | None = None,
     ) -> list[dict[str, Any]]:
-        if name not in allowed or name not in self.schemas:
+        # Legacy immutable snapshots retain their old logical tool permission.
+        # The compatibility name always resolves to DeepSeek; no Bocha adapter exists.
+        canonical = "deepseek_search" if name == "bocha_search" else name
+        permissions = {"deepseek_search" if item == "bocha_search" else item for item in allowed}
+        if canonical not in permissions or canonical not in self.schemas:
             raise PermissionError("tool_not_permitted")
-        parsed = self.schemas[name].model_validate(arguments)
+        parsed = self.schemas[canonical].model_validate(arguments)
         if isinstance(parsed, RetrievalArgs):
             # Evidence is supplied by the tenant-scoped repository, never a global cache.
             return [
@@ -55,48 +66,54 @@ class ToolRegistry:
             return [await self.fetcher.fetch(parsed.url)]
         if not isinstance(parsed, SearchArgs):
             raise ValueError("invalid_tool_arguments")
-        key = self.settings.bocha_api_key.get_secret_value()
+        key = self.settings.deepseek3_api_key.get_secret_value()
         if not key:
             raise ProviderError("search_unconfigured")
-        endpoint = self.settings.bocha_web_search_endpoint
-        if not endpoint.startswith("https://"):
-            endpoint = self.settings.bocha_base_url.rstrip("/") + "/" + endpoint.lstrip("/")
-        async with self.client.stream(
-            "POST",
-            endpoint,
-            headers={"Authorization": "Bearer " + key},
-            json={
-                "query": parsed.query,
-                "count": parsed.count,
-                "summary": True,
-                "freshness": "noLimit",
-            },
-        ) as response:
-            if response.status_code != 200:
-                raise ProviderError("search_http_" + str(response.status_code))
-            import json
-
-            body = json.loads(await bounded_body(response))
-        if str(body.get("code")) != "200":
-            raise ProviderError("search_provider_error")
+        try:
+            async with asyncio.timeout(30), self.search_gate:
+                async with self.search_clock:
+                    loop = asyncio.get_running_loop()
+                    await asyncio.sleep(max(0, self.next_search_at - loop.time()))
+                    self.next_search_at = loop.time() + 0.21
+                async with self.client.stream(
+                    "POST",
+                    "https://api.deepseek.com/v1/tools/search",
+                    headers={"Authorization": "Bearer " + key},
+                    json={
+                        "query": parsed.query,
+                        "count": parsed.count,
+                        "need_content": parsed.need_content,
+                    },
+                ) as response:
+                    if response.status_code != 200:
+                        raise ProviderError("search_http_" + str(response.status_code))
+                    body = json.loads(await bounded_body(response))
+            if not isinstance(body, dict) or not isinstance(body.get("results"), list):
+                raise ProviderError("search_invalid_response")
+            hits = [
+                SearchResultMetadata.model_validate(row) for row in body["results"][: parsed.count]
+            ]
+        except TimeoutError:
+            raise ProviderError("search_timeout") from None
+        except httpx.HTTPError:
+            raise ProviderError("search_transport_error") from None
+        except (ValueError, ValidationError, TypeError):
+            raise ProviderError("search_invalid_response") from None
         result = []
-        for row in ((body.get("data") or {}).get("webPages") or {}).get("value", [])[
-            : parsed.count
-        ]:
-            url = row.get("url", "")
+        for hit in hits:
             try:
-                validated, _ = await validate_url(url)
+                validated, _ = await validate_url(hit.url)
             except ValueError:
                 continue
-            excerpt = str(row.get("summary") or row.get("snippet") or "")[:6000]
-            if excerpt:
-                result.append(
-                    {
-                        "url": str(validated.copy_with(fragment=None)),
-                        "title": str(row.get("name") or "")[:500],
-                        "excerpt": excerpt,
-                        "origin": "search_snippet",
-                        "published_at": row.get("datePublished"),
-                    }
-                )
+            result.append(
+                {
+                    "url": str(validated.copy_with(fragment=None)),
+                    "title": hit.title[:500],
+                    "excerpt": hit.summary[:6000],
+                    "origin": "search_summary",
+                    "published_at": hit.date.isoformat() if hit.date else None,
+                    "search_result": hit.model_dump(mode="json"),
+                    "search_query": parsed.query,
+                }
+            )
         return result

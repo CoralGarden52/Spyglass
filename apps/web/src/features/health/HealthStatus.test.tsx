@@ -23,7 +23,7 @@ test('shows real dependency state without claiming provider connectivity', async
           schema_version: 1,
           status: 'ready',
           dependencies: { postgres: 'ok', redis: 'ok', pgvector: 'ok', migrations: 'ok' },
-          providers: { deepseek: 'configured', bocha: 'unconfigured' },
+          providers: { deepseek: 'configured', deepseek_search: 'unconfigured' },
           research_available: false,
         }),
       ),
@@ -32,7 +32,7 @@ test('shows real dependency state without claiming provider connectivity', async
   renderStatus();
   expect(await screen.findByText('基础服务已就绪')).toBeInTheDocument();
   expect(screen.getByText(/DeepSeek 已配置（未验证连通）/)).toBeInTheDocument();
-  expect(screen.getByText(/Bocha 未配置/)).toBeInTheDocument();
+  expect(screen.getByText(/DeepSeek 搜索 未配置/)).toBeInTheDocument();
   expect(screen.getByText(/研究链路尚未开放/)).toBeInTheDocument();
 });
 
@@ -50,7 +50,7 @@ test('shows dependency failures returned with HTTP 503', async () => {
             pgvector: 'unavailable',
             migrations: 'unavailable',
           },
-          providers: { deepseek: 'unconfigured', bocha: 'unconfigured' },
+          providers: { deepseek: 'unconfigured', deepseek_search: 'unconfigured' },
           research_available: false,
         }),
         { status: 503 },
@@ -72,7 +72,7 @@ test('network errors offer a working retry action', async () => {
           schema_version: 1,
           status: 'ready',
           dependencies: { postgres: 'ok', redis: 'ok', pgvector: 'ok', migrations: 'ok' },
-          providers: { deepseek: 'unconfigured', bocha: 'unconfigured' },
+          providers: { deepseek: 'unconfigured', deepseek_search: 'unconfigured' },
           research_available: false,
         }),
       ),

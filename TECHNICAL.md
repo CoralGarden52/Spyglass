@@ -14,7 +14,7 @@
 | DB              | PostgreSQL + pgvector、SQLAlchemy 2、Alembic                   | 业务数据与向量；迁移显式管理                 |
 | Redis           | Redis                                                          | 缓存/限流；后续可接可靠队列和事件传输        |
 | AI Provider     | DeepSeek API，经自有适配层                                     | 接口隔离、可替换、记录模型版本               |
-| Search Provider | Bocha API，经 Tool 适配层                                      | 搜索结果规范化、去重、来源记录               |
+| Search Provider | DeepSeek Search API，经 Tool 适配层                                      | 搜索结果规范化、去重、来源记录               |
 | 测试            | pytest、Vitest、React Testing Library、Playwright              | 单元、集成与端到端                           |
 | 部署            | Docker Compose，明确镜像版本和迁移指令                         | MVP 单实例部署；未来拆分 API/Worker          |
 
@@ -28,7 +28,7 @@ flowchart TB
   Exec --> Graph[LangGraph Research Graph]
   Graph --> Skills[Skill Resolver + Registry]
   Graph --> Tools[Tool Registry + Permissions]
-  Tools --> Search[Bocha / Web Fetch / File Parser]
+  Tools --> Search[DeepSeek Search / Web Fetch / File Parser]
   Graph --> Model[LLM Provider / DeepSeek]
   Graph --> CK[Postgres Checkpointer]
   App --> DB[(PostgreSQL: business + pgvector)]
@@ -438,7 +438,7 @@ MVP Docker Compose 服务可为 `web`、`api`、`postgres`（安装 pgvector）�
 
 - `agent/runtime` 为真实 LangGraph StateGraph；Planner → Resolver → Collector → Normalizer → 三项并发基础分析 → 汇合 → SWOT/无相互依赖增强项并发 → 战略建议（如选中）→ Writer → Reviewer。依赖通过独立 State 输出键和多源汇合边实现，未引入第二个 Agent 编排核心。
 - 四专业角色分别调用模型，交接内容经 Pydantic/冻结 JSON Schema 验证。运行时读取数据库 `(id,version,checksum)` 对应的 Skill 指导、输入/输出契约和工具许可，不重读可变文件替换历史版本。跨字段事实安全规则对历史版本也生效：有来源状态不可缺证据，已知价格必须有币种和单位；当前冻结 Schema 与注册类型相同时同时执行 Pydantic 业务校验。
-- Collector 生成结构化检索计划、实际调用 Bocha，并有限读取搜索结果网页。Source/Evidence 明确区分 search_snippet 和 web_page，保留 URL/定位/采集时间；网页工具逐跳验证 DNS/IP，固定连接到已验证 IP、保留 Host/TLS SNI，检查目标 robots、大小、类型及超时。robots 本身重定向目前拒绝访问；不把拒绝访问当作产品不支持。
+- Collector 生成结构化检索计划、并发调用 DeepSeek Search，以 summary 作为模型证据。保留原生评分、date 和查询；不自动用 snippet 或网页全文补齐空 summary。旧 search_snippet/web_page 证据保留历史语义。独立网页工具逐跳验证 DNS/IP，固定连接到已验证 IP、保留 Host/TLS SNI，检查目标 robots、大小、类型及超时。robots 本身重定向目前拒绝访问；不把拒绝访问当作产品不支持。
 - Normalizer 只保存来源片段中的逐字评论；同一 Evidence 可对应多个样本，通过服务器 fingerprint 区分，并验证方面 opinion_span 属于对应引用。报告统计来自最新 sentiment artifact，旧修订分类不参与新版本聚合；同时保留真实样本总数、已分类/未分类数、四分类和独立方面分母。未找到合法评论时保持零样本和不足说明。
 - 模型适配支持兼容 Chat Completions 的 JSON/SSE、显式 stream=true、真实 usage、响应大小限制与脱敏错误；全局 semaphore 计入排队时间的单调用超时。未知 Token 为 null。调用审计仅保存角色/工具、Prompt 版本、输入/输出摘要哈希、模型/usage、起止时间和错误码，不记录密钥或隐藏推理。
 - `0004_research_runtime` 建立 research_plans、sources、evidence、competitors、review_samples、analysis_artifacts、claims、claim_evidence、reports、report_versions、runtime_calls、quality_reviews，并为 runs 增加 request_json。所有私有实体通过 Tenant/Run 外键及仓储过滤关联；当前 competitors 是本轮有来源快照，完整可复用知识档案留在 Slice 5。
@@ -446,3 +446,13 @@ MVP Docker Compose 服务可为 `web`、`api`、`postgres`（安装 pgvector）�
 - `LocalRunExecutor` 有界管理任务，DB 原子 claim 防止重复执行。取消、初始化错误、清理错误均尝试持久化明确终态；Run 总预算后只执行有界无模型清理。它不宣称具备进程崩溃后的分布式恢复/可靠队列；公开恢复和重启遗留任务处理在后续切片继续完善。
 - Reviewer 合并确定性引用/Schema 检查与模型独立审查，按 target 路由真实节点，保存每轮问题和内容摘要；摘要排除新分配的 Claim ID，仅 ID 变化不能当作返工成功。最多两次返工，无变化或仍不合格进入 needs_review。Writer 只能选本轮已有 Claim，事实正文由持久化 Claim/分析产物构建。
 - 新增认证只读 API：GET `/research/{project_id}/reports`、GET `/reports/{report_id}`、GET `/evidence/{evidence_id}`；路径为 UUID，统一错误和生成的 TS 类型保持同步。报告返回当前结构化版本、质量历史、真实调用和产物修订，项目详情可查看/刷新和打开证据。此为当前最小结果读回，不提前宣布 Slice 4 的 Run 创建/SSE/实时双栏或 Slice 5 的完整报告中心完成。
+
+
+## 16. DeepSeek Search 原生来源字段（2026-10-20 用户变更）
+
+- 唯一搜索端点固定为 `https://api.deepseek.com/v1/tools/search`，仅读取 `DEEPSEEK3_API_KEY`，不复用聊天网关 BASE_URL，无 Bocha 网络回退。单查询最多 128 字符、最多取 5 条；共享并发上限 3，每次请求启动间隔至少 0.21 秒（单 API 进程），请求/排队总预算 30 秒，不自动重试收费调用。多个进程共享账户配额需要后续 Redis 调度，当前不是分布式限流。
+- Source/Evidence 继续使用既有模型，无新增迁移。`locator.search_result` 保存 title/url/snippet/summary/content/rerank_score/authority/date/site_name/site_icon 以及计算指标；`published_at` 仅来自 date，统一 UTC，未知 null。模型只读取 summary 作为 excerpt，附原生评分/日期，不把长内容重复送入上下文。低于 1.5 或未知相关性、缺少 summary 的候选保存为 rejected，正常证据检索排除这些候选；权威度低不会自动否定用户评价。
+- `source_confidence = round(0.7 * rerank_score / 3 + 0.3 * authority / 4, 4)`，政策名 `deepseek-native-weighted-v1`。任一评分未知（authority=-1）则指数 null。这是项目自定义的来源参考指数，不是供应商提供的事实真实性概率；不额外推断旧 Bocha 来源质量或日期。历史政策名称与原始数值保留。
+- 有日期的有效证据按 date 从近到远提供，未知日期后置；Collector Prompt `collector-deepseek-search-v1` 明确产品消歧、官方来源及 after: 日期操作符，时效敏感的消息/评价优先近期；持续更新但无发布日期的官方价格页仍可用，Analyst 明确区分采集时间与发布时间并解释陈旧/冲突证据。
+- 只读 Evidence API 新增可空 search_result；Report API 新增 search_sources（同 Tenant/Run 候选，含 rejected），前端显示原生评分、date、来源指数和公式，snippet 用于列表，summary 用于证据正文。历史无原生字段的证据显示未知，不回填评分。
+- 6 个场景 Skill 升至 0.1.1 并声明 deepseek_search，4 核心/3 增强版本不变。历史 0.1.0 的 bocha_search 仅作为 DeepSeek 的许可别名兼容，不再实现或访问 Bocha；历史快照/报告不改写。API 当前 schema_version 1 采用可选字段增量演进，OpenAPI/TS 同步生成。

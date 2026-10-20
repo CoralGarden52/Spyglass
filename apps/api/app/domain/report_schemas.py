@@ -2,9 +2,10 @@ from datetime import datetime
 from typing import Any, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.agent.runtime.contracts import ReportDraft, ReviewResult
+from app.domain.search import SearchResultMetadata, SearchSourceView
 
 
 class ReportSummary(BaseModel):
@@ -45,6 +46,7 @@ class ReportRead(ReportSummary):
     review_history: list[ReviewResult]
     artifact_history: list[ArtifactView]
     calls: list[AuditView]
+    search_sources: list[SearchSourceView] = Field(default_factory=list)
 
 
 class ReportList(BaseModel):
@@ -68,6 +70,7 @@ class EvidenceRead(BaseModel):
     title: str
     origin: str
     permission_note: str
+    search_result: SearchResultMetadata | None = None
 
 
 class EvidenceResponse(BaseModel):

@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from app.agent.runtime.contracts import ReportDraft
 from app.application.auth import TenantContext
 from app.domain.errors import DomainError
+from app.domain.search import SearchResultMetadata
 from app.infrastructure.database.knowledge import (
     AnalysisArtifact,
     Claim,
@@ -95,20 +96,35 @@ class ResearchStore:
 
     async def evidence(self) -> list[dict[str, Any]]:
         sources = {s.id: s for s in await self.rows(Source)}
-        return [
+        evidence = [
             {
                 "id": str(e.id),
                 "source_id": str(e.source_id),
                 "excerpt": e.excerpt,
                 "category": e.category,
                 "validity_status": e.validity_status,
-                "locator": e.locator_json,
+                "locator": {k: v for k, v in e.locator_json.items() if k != "search_result"},
+                "search_scores": {
+                    k: v
+                    for k, v in e.locator_json.get("search_result", {}).items()
+                    if k
+                    in {
+                        "date",
+                        "rerank_score",
+                        "authority",
+                        "source_confidence",
+                        "confidence_policy",
+                    }
+                },
                 "url": sources[e.source_id].canonical_url,
                 "origin": sources[e.source_id].origin_type,
                 "collected_at": e.created_at.isoformat(),
             }
             for e in await self.rows(Evidence)
+            if e.validity_status == "valid"
         ]
+        # Native UTC publication dates determine recency; collection time is not publication.
+        return sorted(evidence, key=lambda e: e["search_scores"].get("date") or "", reverse=True)
 
     async def save_source(self, page: dict[str, Any], category: str) -> UUID:
         fingerprint = digest([page["url"], page["excerpt"]])
@@ -122,11 +138,26 @@ class ResearchStore:
                 "origin_type": page["origin"],
                 "content_hash": fingerprint,
                 "permission_note": "公开检索摘要；需结合原网页核验"
-                if page["origin"] == "search_snippet"
+                if page["origin"] in {"search_snippet", "search_summary"}
                 else "公开页面，已检查 robots；保存受控文本片段",
             },
         )
-        evidence_id = uuid5(source_id, category)
+        native = (
+            SearchResultMetadata.model_validate(page["search_result"])
+            if page.get("search_result") is not None
+            else None
+        )
+        evidence_id = uuid5(
+            source_id,
+            category
+            + (":" + digest([page["search_result"], page.get("search_query")]) if native else ""),
+        )
+        rejection = None
+        if native:
+            if not native.summary.strip():
+                rejection = "missing_summary"
+            elif not native.high_quality:
+                rejection = "low_or_unknown_relevance"
         await self.put(
             Evidence,
             {
@@ -138,8 +169,17 @@ class ResearchStore:
                     "url": page["url"],
                     "kind": page["origin"],
                     "published_at": page.get("published_at"),
+                    **(
+                        {
+                            "search_result": native.model_dump(mode="json"),
+                            "search_query": page.get("search_query"),
+                            "rejection_reason": rejection,
+                        }
+                        if native
+                        else {}
+                    ),
                 },
-                "validity_status": "valid",
+                "validity_status": "rejected" if rejection else "valid",
             },
         )
         return evidence_id

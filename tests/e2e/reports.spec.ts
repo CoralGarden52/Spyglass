@@ -29,6 +29,9 @@ test('real persisted report, source readback, repair versions and refresh', asyn
     'CONTROLLED SYNTHETIC FIXTURE',
   );
   await expect(page.getByRole('dialog', { name: '证据来源' })).toContainText('公开检索摘要');
+  await expect(page.getByRole('dialog')).toContainText('86.0 / 100');
+  await expect(page.getByRole('dialog')).toContainText('发布时间');
+  await page.screenshot({ path: '.artifacts/screenshots/deepseek-source-metadata.png' });
   await page.keyboard.press('Escape');
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await page.getByText('质检与返工记录（2 次）', { exact: true }).click();

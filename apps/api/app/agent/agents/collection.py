@@ -1,4 +1,5 @@
 import asyncio
+from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID, uuid5
 
@@ -61,11 +62,21 @@ class CollectionNodes:
                     "Plan specific public web searches for official product "
                     "capabilities, current official pricing, and verbatim public user "
                     "reviews. Cover all competitors. Repair issues by searching new "
-                    "relevant sources.\n"
+                    "relevant sources. Each DeepSeek query must be at most 128 Unicode "
+                    "characters. Disambiguate product identity (e.g. Windsurf AI editor, "
+                    "not the sport; Claude Code, not general Claude API). Prefer official "
+                    "domains using site: when verified. Use after:YYYY-MM-DD for recent "
+                    "news/reviews, but allow undated living official pricing pages. "
+                    "Never invent official domains.\n"
                 )
                 + scenario["instructions"],
-                {"plan": plan, "repair": previous.get("issues", [])},
+                {
+                    "plan": plan,
+                    "repair": previous.get("issues", []),
+                    "as_of_utc": datetime.now(UTC).date().isoformat(),
+                },
                 CollectionPlan,
+                version="collector-deepseek-search-v1",
             )
             collection = CollectionPlan.model_validate(raw)
         except ProviderError:
@@ -78,29 +89,10 @@ class CollectionNodes:
             async with gate:
                 try:
                     pages = await self.c.tool(
-                        "bocha_search", {"query": task.query, "count": 3}, scenario["id"]
+                        "deepseek_search", {"query": task.query, "count": 5}, scenario["id"]
                     )
                     for page in pages:
                         await self.c.store.save_source(page, task.category)
-                    # Fetch a bounded subset; inaccessible pages retain labelled snippets.
-                    if index < 2 and pages:
-                        try:
-                            fetched = await self.c.tool(
-                                "web_fetch", {"url": pages[0]["url"]}, scenario["id"]
-                            )
-                            for page in fetched:
-                                if page["text"].strip():
-                                    await self.c.store.save_source(
-                                        {
-                                            "url": page["url"],
-                                            "title": pages[0]["title"],
-                                            "excerpt": page["text"],
-                                            "origin": "web_page",
-                                        },
-                                        task.category,
-                                    )
-                        except ProviderError:
-                            return
                 except ProviderError:
                     return
 

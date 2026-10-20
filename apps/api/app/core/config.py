@@ -27,9 +27,7 @@ class Settings(BaseSettings):
     auth_rate_window_seconds: int = Field(default=60, ge=1, le=3600)
     rate_limit_namespace: str = "spyglass"
     dependency_timeout_seconds: float = Field(default=3, gt=0, le=10)
-    bocha_api_key: SecretStr = SecretStr("")
-    bocha_base_url: str = "https://api.bocha.cn"
-    bocha_web_search_endpoint: str = "/v1/web-search"
+    deepseek3_api_key: SecretStr = SecretStr("")
     deepseek_api_key: SecretStr = SecretStr("")
     deepseek_base_url: str = "https://api.deepseek.com"
     deepseek_model: str = "deepseek-chat"
