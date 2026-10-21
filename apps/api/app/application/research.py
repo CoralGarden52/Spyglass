@@ -15,6 +15,7 @@ from app.domain.schemas import (
     ProjectResult,
     ProjectView,
     ThreadInput,
+    ThreadList,
     ThreadResult,
     ThreadView,
 )
@@ -56,6 +57,14 @@ class ResearchService:
         if row is None:
             raise DomainError(404, "not_found", "会话不存在或无权访问")
         return ThreadResult(data=ThreadView.model_validate(row))
+
+    async def threads(self, project_id: UUID) -> ThreadList:
+        await self.project(project_id)
+        return ThreadList(
+            data=[
+                ThreadView.model_validate(row) for row in await self.repository.threads(project_id)
+            ]
+        )
 
     async def create_thread(self, payload: ThreadInput, key: str) -> ThreadResult:
         await self.project(payload.project_id)

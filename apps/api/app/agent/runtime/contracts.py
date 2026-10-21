@@ -8,6 +8,14 @@ from app.agent.skills.contracts import Contract
 
 Role = Literal["planner", "collector", "normalizer", "analyst", "writer", "reviewer"]
 Target = Literal["collector", "analyst", "writer"]
+ROLE_TOKEN_BUDGETS: dict[Role, int] = {
+    "planner": 2000,
+    "collector": 3000,
+    "normalizer": 6000,
+    "analyst": 6000,
+    "writer": 3000,
+    "reviewer": 4000,
+}
 
 
 class ModelInput(Contract):
@@ -16,7 +24,9 @@ class ModelInput(Contract):
     instructions: str
     context: dict[str, Any]
     output_schema: dict[str, Any]
-    max_tokens: int = Field(default=3000, ge=100, le=12000)
+    max_tokens: int = Field(
+        default_factory=lambda data: ROLE_TOKEN_BUDGETS[data["role"]], ge=100, le=12000
+    )
 
 
 class ModelReply(Contract):
@@ -37,10 +47,11 @@ class ResearchPlan(Contract):
 class SearchTask(Contract):
     query: str = Field(min_length=1, max_length=128, pattern=r"\S")
     category: Literal["product", "pricing", "review", "market"]
+    competitor_name: str | None = Field(default=None, max_length=200)
 
 
 class CollectionPlan(Contract):
-    searches: list[SearchTask] = Field(min_length=1, max_length=12)
+    searches: list[SearchTask] = Field(max_length=40)
 
 
 class ProfileDraft(Contract):
@@ -80,10 +91,12 @@ class Issue(Contract):
 
 class ReviewVerdict(Contract):
     passed: bool
-    issues: list[Issue]
+    issues: list[Issue] = Field(max_length=6)
 
 
 class ReviewResult(ReviewVerdict):
+    # Runtime merges deterministic validation with the bounded model verdict.
+    issues: list[Issue]
     schema_version: Literal[1] = 1
     next_target: Target | None
     review_count: int
@@ -99,6 +112,15 @@ class SectionPlan(Contract):
 class WritingPlan(Contract):
     title: str = Field(min_length=1, max_length=200)
     sections: list[SectionPlan] = Field(min_length=4, max_length=7)
+
+
+class OutlineSection(Contract):
+    skill_id: str
+
+
+class WritingOutline(Contract):
+    title: str = Field(min_length=1, max_length=200)
+    sections: list[OutlineSection] = Field(min_length=4, max_length=7)
 
 
 class ReportClaim(Contract):

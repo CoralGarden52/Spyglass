@@ -1,5 +1,6 @@
 """Opt-in paid DeepSeek Search adapter check; no model calls or business DB writes."""
 
+import argparse
 import asyncio
 import json
 import sys
@@ -18,6 +19,9 @@ from app.infrastructure.providers.chat import ProviderError  # noqa: E402
 
 
 async def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--query", action="append", required=True)
+    queries = parser.parse_args().query
     settings = Settings()
     if not settings.deepseek3_api_key.get_secret_value():
         raise SystemExit("DEEPSEEK3_API_KEY is unconfigured")
@@ -45,16 +49,7 @@ async def main() -> None:
                 }
 
         started = time.perf_counter()
-        results = await asyncio.gather(
-            *[
-                search(query)
-                for query in (
-                    "Cursor AI code editor pricing site:cursor.com",
-                    "Claude Code pricing site:claude.com",
-                    "Windsurf AI code editor pricing site:windsurf.com",
-                )
-            ]
-        )
+        results = await asyncio.gather(*[search(query) for query in queries])
     output = {
         "kind": "live_deepseek_search_adapter",
         "as_of": datetime.now(UTC).isoformat(),

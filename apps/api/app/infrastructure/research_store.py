@@ -1,6 +1,5 @@
 import hashlib
 import json
-from datetime import UTC, datetime
 from typing import Any, TypeVar, cast
 from uuid import UUID, uuid5
 
@@ -27,6 +26,7 @@ from app.infrastructure.database.knowledge import (
 )
 from app.infrastructure.database.research import Run
 from app.infrastructure.database.skills import SkillVersion
+from app.infrastructure.event_store import EventStore
 
 T = TypeVar("T", bound=RunEntity)
 
@@ -90,9 +90,23 @@ class ResearchStore:
         return result
 
     async def save_plan(self, payload: dict[str, Any]) -> UUID:
-        return await self.put(
+        plan_id = await self.put(
             ResearchPlanRecord, {"id": uuid5(self.run_id, "plan"), "payload": payload}
         )
+        await self.events.emit(
+            "plan.updated",
+            {
+                "plan_id": str(plan_id),
+                "competitor_names": payload.get("competitor_names", []),
+                "scope": payload.get("scope", ""),
+            },
+            "plan",
+        )
+        return plan_id
+
+    @property
+    def events(self) -> EventStore:
+        return EventStore(self.sessions, self.context, self.run_id)
 
     async def evidence(self) -> list[dict[str, Any]]:
         sources = {s.id: s for s in await self.rows(Source)}
@@ -169,6 +183,7 @@ class ResearchStore:
                     "url": page["url"],
                     "kind": page["origin"],
                     "published_at": page.get("published_at"),
+                    "competitor_name": page.get("competitor_name"),
                     **(
                         {
                             "search_result": native.model_dump(mode="json"),
@@ -181,6 +196,16 @@ class ResearchStore:
                 },
                 "validity_status": "rejected" if rejection else "valid",
             },
+        )
+        await self.events.emit(
+            "evidence.added",
+            {
+                "evidence_id": str(evidence_id),
+                "source_id": str(source_id),
+                "category": category,
+                "validity_status": "rejected" if rejection else "valid",
+            },
+            "evidence:" + str(evidence_id),
         )
         return evidence_id
 
@@ -252,6 +277,16 @@ class ResearchStore:
                     await extract(child)
 
         await extract(payload)
+        await self.events.emit(
+            "analysis.updated",
+            {
+                "artifact_id": str(artifact_id),
+                "skill_id": skill["id"],
+                "revision": round_number + 1,
+                "status": payload["status"],
+            },
+            "artifact:" + str(artifact_id),
+        )
         return artifact_id
 
     async def claims(self) -> list[dict[str, Any]]:
@@ -319,38 +354,46 @@ class ResearchStore:
                 .on_conflict_do_nothing()
             )
             await db.commit()
+        await self.events.emit(
+            "report.updated",
+            {"report_id": str(report_id), "version": round_number + 1},
+            f"report:{report_id}:{round_number + 1}",
+        )
         return report_id
 
     async def audit(self, **values: Any) -> None:
         from uuid import uuid4
 
-        await self.put(RuntimeCall, {"id": uuid4(), **values})
+        call_id = uuid4()
+        await self.put(RuntimeCall, {"id": call_id, **values})
+        if values["kind"] == "model":
+            await self.events.model_call(call_id, values)
 
     async def review(self, payload: dict[str, Any], round_number: int) -> None:
         await self.put(
             QualityReview, {"id": uuid5(self.run_id, f"review:{round_number}"), "payload": payload}
         )
+        await self.events.emit(
+            "review.failed" if not payload.get("passed") else "review.completed",
+            {
+                "review_count": payload.get("review_count"),
+                "status": payload.get("status"),
+                "next_target": payload.get("next_target"),
+                "issue_count": len(payload.get("issues", [])),
+            },
+            f"review:{round_number}",
+        )
 
     async def status(self, status: str, error: str | None = None) -> None:
-        async with self.sessions() as db:
-            row = await db.scalar(
-                select(Run)
-                .where(Run.id == self.run_id, Run.tenant_id == self.context.tenant_id)
-                .with_for_update()
-            )
-            if row is None:
-                raise DomainError(404, "not_found", "运行不存在")
-            row.status = status
-            row.error_code = error
-            if status == "running":
-                row.started_at = datetime.now(UTC)
-            else:
-                row.finished_at = datetime.now(UTC)
-                usages = [c.usage_json for c in await self.rows(RuntimeCall) if c.kind == "model"]
-                row.usage_json = {
-                    "known_calls": sum(u is not None for u in usages),
-                    "total_tokens": sum(u.get("total_tokens", 0) for u in usages if u is not None)
-                    if usages and all(u is not None and "total_tokens" in u for u in usages)
-                    else None,
-                }
-            await db.commit()
+        if status not in {"completed", "failed", "cancelled", "needs_review"}:
+            raise ValueError("terminal_status_required")
+        usages = [c.usage_json for c in await self.rows(RuntimeCall) if c.kind == "model"]
+        usage = {
+            "known_calls": sum(u is not None for u in usages),
+            "total_tokens": sum(u.get("total_tokens", 0) for u in usages if u is not None)
+            if usages and all(u is not None and "total_tokens" in u for u in usages)
+            else None,
+        }
+        await self.events.finish(
+            status, error, usage if any(u is not None for u in usages) else None
+        )

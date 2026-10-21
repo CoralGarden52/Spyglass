@@ -6,17 +6,17 @@
 
 资料包原图实际位于根目录 `references/`，文件名为中文。Slice 0 保留这些原件，并按下表复制至标准路径；`assets/references/manifest.json` 记录文件名映射、尺寸及 SHA-256。原图字节不变，不将参考图用作页面背景。
 
-| 文件（可相对点击） | 目标页面/作用 | 原图主要布局 |
-|---|---|---|
-| [01-workbench.png](assets/references/01-workbench.png) | `/` 工作台 | 居中欢迎语、大输入框、Skills/模板/近期调研 |
-| [02-my-research.png](assets/references/02-my-research.png) | `/research` 我的调研 | 指标卡、状态筛选、项目列表、右侧活动栏 |
-| [03-research-session.png](assets/references/03-research-session.png) | `/research/:id` 调研会话与报告 | 左侧对话/研究计划/进度、右侧实时报告 |
-| [04-competitor-profile.png](assets/references/04-competitor-profile.png) | `/competitors`、`/competitors/:id` | 左竞品检索与列表、右详情 Tab 与信息完整度 |
-| [05-intelligence.png](assets/references/05-intelligence.png) | `/intelligence` 竞争情报 | 顶部情报横幅/统计、左时间线、右汇总/图表 |
-| [06-report-center.png](assets/references/06-report-center.png) | `/reports`、`/reports/:id` | 统计与筛选、报告卡列表、右选中报告摘要 |
-| [07-skill-center.png](assets/references/07-skill-center.png) | `/skills` | 概览/筛选/多行 Skills 卡片 |
-| [08-trace-overview.png](assets/references/08-trace-overview.png) | `/runs` 总览及主从选择布局 | 运行统计、可筛选列表、选中项目入口；图片左部为列表示意 |
-| [09-trace-detail.png](assets/references/09-trace-detail.png) | `/runs/:runId` 运行详情 | Run KPI、阶段筛选、时间轴、步骤详情/结构化结果 |
+| 文件（可相对点击）                                                       | 目标页面/作用                      | 原图主要布局                                           |
+| ------------------------------------------------------------------------ | ---------------------------------- | ------------------------------------------------------ |
+| [01-workbench.png](assets/references/01-workbench.png)                   | `/` 工作台                         | 居中欢迎语、大输入框、Skills/模板/近期调研             |
+| [02-my-research.png](assets/references/02-my-research.png)               | `/research` 我的调研               | 指标卡、状态筛选、项目列表、右侧活动栏                 |
+| [03-research-session.png](assets/references/03-research-session.png)     | `/research/:id` 调研会话与报告     | 左侧对话/研究计划/进度、右侧实时报告                   |
+| [04-competitor-profile.png](assets/references/04-competitor-profile.png) | `/competitors`、`/competitors/:id` | 左竞品检索与列表、右详情 Tab 与信息完整度              |
+| [05-intelligence.png](assets/references/05-intelligence.png)             | `/intelligence` 竞争情报           | 顶部情报横幅/统计、左时间线、右汇总/图表               |
+| [06-report-center.png](assets/references/06-report-center.png)           | `/reports`、`/reports/:id`         | 统计与筛选、报告卡列表、右选中报告摘要                 |
+| [07-skill-center.png](assets/references/07-skill-center.png)             | `/skills`                          | 概览/筛选/多行 Skills 卡片                             |
+| [08-trace-overview.png](assets/references/08-trace-overview.png)         | `/runs` 总览及主从选择布局         | 运行统计、可筛选列表、选中项目入口；图片左部为列表示意 |
+| [09-trace-detail.png](assets/references/09-trace-detail.png)             | `/runs/:runId` 运行详情            | Run KPI、阶段筛选、时间轴、步骤详情/结构化结果         |
 
 原始参考主要为约 1672×941 桌面分辨率，会话图约 1586×992。页面中的品牌、头像、竞品 Logo、文案、统计数字都是**视觉参考**，不得被当成真实数据库种子数据或运营指标。必要时使用项目自有中性图标/合法素材，不能将整张参考图作为前端背景来伪装实现。
 
@@ -51,8 +51,8 @@
   --sg-radius-control: 9px;
   --sg-sidebar-width: 232px;
   --sg-header-height: 62px;
-  --sg-shadow-card: 0 2px 10px rgba(19,42,30,.035);
-  font-family: "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", sans-serif;
+  --sg-shadow-card: 0 2px 10px rgba(19, 42, 30, 0.035);
+  font-family: 'Microsoft YaHei', 'PingFang SC', 'Noto Sans CJK SC', sans-serif;
 }
 ```
 
@@ -92,6 +92,8 @@ AppShell
 - 支持搜索、筛选、继续运行、查看详情、软删除/归档确认；按钮行为可被自动化测试。
 
 ### 5.3 调研会话与实时报告（03）
+
+2026-10-21 用户补图调整：会话页使用通栏工作区，固定侧栏默认收起，通过左上角导航按钮打开；其他页面沿用既有 Sidebar。此调整由用户明确指定，以本次补图的双栏、研究计划、阶段用量、采集任务卡与报告排版为准。来源改为卡片，显示原生图标/站点/标题/snippet/UTC date 和评分，提供状态筛选、关键词搜索、外部网页与证据入口；长限制说明可折叠。图中的产品、用量、价格、市场份额和图表不作为示例业务数据写入页面，缺少真实图表数据时保持明确禁用。
 
 - 左右双栏：左侧用户消息/Agent 回复、研究计划阶段条、阶段事件卡及底部输入；右侧报告区域，具有大纲、内容、图表、数据来源 Tab。
 - `run.started`/`plan.updated`/`agent.*`/`tool.*`/`report.updated` 驱动 UI；阶段完成不能用前端定时器伪造。实时流式 Markdown 必须转为合法消息数据；报告使用结构化 Section 渲染。

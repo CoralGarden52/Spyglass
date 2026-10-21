@@ -36,7 +36,7 @@ class ReadinessResponse(BaseModel):
     status: Literal["ready", "degraded"]
     dependencies: Dependencies
     providers: ProviderConfiguration
-    research_available: Literal[False] = False
+    research_available: bool = False
 
 
 async def get_readiness(resources: HealthResources, settings: Settings) -> ReadinessResponse:
@@ -63,10 +63,11 @@ async def get_readiness(resources: HealthResources, settings: Settings) -> Readi
         if all(v == "ok" for v in dependencies.model_dump().values())
         else "degraded",
         dependencies=dependencies,
+        research_available=all(v == "ok" for v in dependencies.model_dump().values())
+        and settings.model_configured
+        and bool(settings.deepseek3_api_key.get_secret_value()),
         providers=ProviderConfiguration(
-            deepseek="configured"
-            if settings.deepseek_api_key.get_secret_value()
-            else "unconfigured",
+            deepseek="configured" if settings.model_configured else "unconfigured",
             deepseek_search="configured"
             if settings.deepseek3_api_key.get_secret_value()
             else "unconfigured",

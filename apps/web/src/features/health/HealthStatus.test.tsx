@@ -33,7 +33,7 @@ test('shows real dependency state without claiming provider connectivity', async
   expect(await screen.findByText('基础服务已就绪')).toBeInTheDocument();
   expect(screen.getByText(/DeepSeek 已配置（未验证连通）/)).toBeInTheDocument();
   expect(screen.getByText(/DeepSeek 搜索 未配置/)).toBeInTheDocument();
-  expect(screen.getByText(/研究链路尚未开放/)).toBeInTheDocument();
+  expect(screen.getByText(/基础服务与供应商配置就绪后/)).toBeInTheDocument();
 });
 
 test('shows dependency failures returned with HTTP 503', async () => {

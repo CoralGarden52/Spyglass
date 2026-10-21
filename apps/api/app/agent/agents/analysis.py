@@ -1,5 +1,6 @@
 from uuid import UUID
 
+from app.agent.agents.prompts import ANALYST, PROMPT_VERSION
 from app.agent.runtime.context import NodeContext, empty_analysis
 from app.agent.runtime.state import ResearchState
 from app.agent.skills.contracts import DependentAnalysisInput, EvidenceInput, ScenarioContext
@@ -58,17 +59,7 @@ class AnalysisNodes:
             ]
             output = await self.c.call(
                 "analyst",
-                skill["instructions"]
-                + (
-                    "\nUse only supplied evidence IDs. Analyze all requested "
-                    "competitors. Prefer newer dated sources for time-sensitive facts; use "
-                    "search_scores.date as publication time, not collected_at. Unknown dates "
-                    "stay unknown; explain stale/conflicting facts. Source confidence is an "
-                    "index, not truth probability. Do not treat search summaries as full-page "
-                    "verification. Distinguish unavailable data from explicitly "
-                    "unsupported functionality. Review classification must reference "
-                    "the supplied literal review samples, never create a new sample."
-                ),
+                skill["instructions"] + "\n" + ANALYST,
                 {
                     "schema_version": 1,
                     "run_id": str(run.id),
@@ -86,7 +77,7 @@ class AnalysisNodes:
                     "repair_issues": issues,
                 },
                 skill["output_schema"],
-                f"{skill_id}:{skill['version']}",
+                f"{skill_id}:{skill['version']}:{PROMPT_VERSION}",
             )
             if skill_id == "user_sentiment":
                 by_fingerprint = {r.fingerprint: r for r in samples}

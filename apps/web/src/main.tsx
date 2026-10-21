@@ -10,7 +10,9 @@ import { AuthPage } from './pages/AuthPage';
 import { AccountSettings } from './pages/AccountSettings';
 import { ResearchDetail, ResearchProjects } from './pages/ResearchProjects';
 import { RequireAuth } from './features/auth/RequireAuth';
+import { ResearchSession } from './pages/ResearchSession';
 import './styles/index.css';
+import './styles/research-session.css';
 
 const client = new QueryClient({ defaultOptions: { queries: { staleTime: 30_000 } } });
 const router = createBrowserRouter([
@@ -26,6 +28,7 @@ const router = createBrowserRouter([
           { index: true, Component: Workbench },
           { path: 'research', Component: ResearchProjects },
           { path: 'research/:id', Component: ResearchDetail },
+          { path: 'threads/:id', Component: ResearchSession },
           { path: 'settings', Component: AccountSettings },
           { path: 'skills', Component: SkillCenter },
           { path: 'skills/:id', Component: SkillDetails },

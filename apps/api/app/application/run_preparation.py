@@ -25,7 +25,7 @@ class PreparedRun(BaseModel):
 
 
 class RunPreparation:
-    """Atomic pending Run persistence. Execution is introduced in the next slices."""
+    """Atomic Run, frozen Skills and user message before executor submission."""
 
     def __init__(self, database: AsyncSession, context: TenantContext, registry: SkillRegistry):
         self.database = database

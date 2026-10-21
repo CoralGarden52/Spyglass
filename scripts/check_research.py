@@ -1,5 +1,6 @@
 """Opt-in PAID live research on a disposable database; never seeds business data."""
 
+import argparse
 import json
 import os
 import subprocess
@@ -28,11 +29,14 @@ from app.main import create_app  # noqa: E402
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--message", required=True)
+    parser.add_argument("--scenario", default="general_analysis")
+    parser.add_argument("--advanced", action="append", default=[])
+    args = parser.parse_args()
+    message = args.message
     settings = Settings()
-    if (
-        not settings.deepseek3_api_key.get_secret_value()
-        or not settings.deepseek_api_key.get_secret_value()
-    ):
+    if not settings.deepseek3_api_key.get_secret_value() or not settings.model_configured:
         raise SystemExit("Required research providers are unconfigured")
     url = make_url(settings.database_url.get_secret_value())
     name = "spyglass_live_" + uuid4().hex
@@ -80,9 +84,7 @@ def main() -> None:
                     context = await AuthService(db, scoped).resolve(token)
                     research = ResearchService(db, context)
                     project = await research.create_project(
-                        ProjectInput(
-                            title="真实联网：AI 编程工具竞品研究", scenario_skill_id="ai_llm"
-                        ),
+                        ProjectInput(title="真实联网：竞品研究", scenario_skill_id=args.scenario),
                         str(uuid4()),
                     )
                     thread = await research.create_thread(
@@ -91,14 +93,9 @@ def main() -> None:
                     prepared = await RunPreparation(db, context, client.app.state.skills).prepare(
                         thread.data.id,
                         RunRequest(
-                            user_message=(
-                                "研究 Cursor、Claude Code 与 Windsurf 的产品定位、"
-                                "核心功能、定价策略和公开用户评价。"
-                                "保留币种、单位与采集日期，区分四类情感及方面，生成有来源的 SWOT；"
-                                "不得虚构缺失价格或评价。"
-                            ),
-                            scenario_skill_id="ai_llm",
-                            advanced_skill_ids=["market_landscape"],
+                            user_message=message,
+                            scenario_skill_id=args.scenario,
+                            advanced_skill_ids=args.advanced,
                         ),
                         str(uuid4()),
                     )

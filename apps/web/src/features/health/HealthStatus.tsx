@@ -63,7 +63,7 @@ export function HealthStatus() {
         </>
       )}
       {error && <p className="muted">请确认 API 已启动，并检查本地端口或网络。</p>}
-      <p className="muted">研究链路尚未开放，当前检查系统基础服务。</p>
+      <p className="muted">基础服务与供应商配置就绪后，可从工作台提交真实研究。</p>
     </section>
   );
 }

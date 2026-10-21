@@ -7,6 +7,7 @@ from pydantic import BaseModel
 from pydantic import ValidationError as ModelValidationError
 
 from app.agent.runtime.contracts import ModelInput, ModelProvider, Role
+from app.agent.runtime.evidence_context import evidence_context
 from app.agent.skills.contracts import SCHEMAS
 from app.agent.tools.registry import ToolRegistry
 from app.infrastructure.providers.chat import ProviderError
@@ -31,6 +32,12 @@ class NodeContext:
         schema: type[BaseModel] | dict[str, Any],
         version: str = "research-v1",
     ) -> dict[str, Any]:
+        context = {"as_of_utc": datetime.now(UTC).date().isoformat(), **context}
+        if isinstance(context.get("untrusted_evidence"), list):
+            context = {
+                **context,
+                "untrusted_evidence": evidence_context(context["untrusted_evidence"], role),
+            }
         document = schema.model_json_schema() if isinstance(schema, type) else schema
         started = datetime.now(UTC)
         model, usage, output_hash, error = None, None, None, None
@@ -54,11 +61,18 @@ class NodeContext:
                 contract.model_validate(reply.data)
             output_hash = digest(reply.data)
             return reply.data
-        except (ValidationError, ModelValidationError):
-            error = "schema_error"
+        except (ValidationError, ModelValidationError) as exc:
+            import re
+
+            path = (
+                exc.json_path if isinstance(exc, ValidationError) else str(exc.errors()[0]["loc"])
+            )
+            error = "schema_error:" + re.sub(r"[^A-Za-z0-9_.$\[\]]", "_", path)[:65]
             raise ProviderError(error) from None
         except ProviderError as exc:
             error = str(exc)
+            model = getattr(exc, "model", None) or model
+            usage = getattr(exc, "usage", None) or usage
             raise
         except asyncio.CancelledError:
             error = "cancelled"
@@ -81,6 +95,7 @@ class NodeContext:
     async def tool(self, name: str, args: dict[str, Any], skill_id: str) -> list[dict[str, Any]]:
         started = datetime.now(UTC)
         result, error = None, None
+        call_id = await self.store.events.start_tool(name, args)
         try:
             result = await self.tools.execute(
                 name,
@@ -98,6 +113,9 @@ class NodeContext:
             error = str(exc) if isinstance(exc, ProviderError) else "tool_rejected"
             raise ProviderError(error) from None
         finally:
+            await self.store.events.finish_tool(
+                call_id, name, len(result) if result is not None else None, error
+            )
             await self.store.audit(
                 kind="tool",
                 name=name,

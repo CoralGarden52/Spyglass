@@ -48,6 +48,7 @@ class ResearchRunner:
 
             row.status = "running"
             row.started_at = datetime.now(UTC)
+            await store.events.append(db, row, "run.started", {"status": "running"})
             await db.commit()
             return True
 
@@ -111,6 +112,8 @@ class ResearchRunner:
                         state["status"] = "cancelled" if failure == "run_cancelled" else "failed"
                     else:
                         existing = await store.artifacts()
+                        if failure != "run_cancelled" and not await store.evidence():
+                            state["status"] = "failed"
                         reviews = await store.rows(QualityReview)
                         if reviews:
                             latest = max(reviews, key=lambda r: r.payload["review_count"])
@@ -156,6 +159,7 @@ class LocalRunExecutor:
         self.runner, self.capacity = runner, capacity
         self.tasks: dict[UUID, asyncio.Task[ResearchState]] = {}
         self.contexts: dict[UUID, TenantContext] = {}
+        self.submission_lock = asyncio.Lock()
 
     async def submit(self, context: TenantContext, run_id: UUID) -> None:
         await ResearchStore(self.runner.resources.sessions, context, run_id).run()
@@ -184,7 +188,7 @@ class LocalRunExecutor:
             await asyncio.gather(task, return_exceptions=True)
             if (await store.run()).status in {"pending", "running", "cancel_requested"}:
                 await store.status("cancelled", "run_cancelled")
-        elif run.status == "pending":
+        elif run.status in {"pending", "cancel_requested"}:
             await store.status("cancelled", "run_cancelled")
 
     async def get_status(self, context: TenantContext, run_id: UUID) -> str:

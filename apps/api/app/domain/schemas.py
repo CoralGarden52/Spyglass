@@ -114,6 +114,11 @@ class ThreadResult(BaseModel):
     data: ThreadView
 
 
+class ThreadList(BaseModel):
+    schema_version: Literal[1] = 1
+    data: list[ThreadView]
+
+
 class MessageView(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: UUID

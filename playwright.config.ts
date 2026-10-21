@@ -3,6 +3,7 @@ import { defineConfig, devices } from '@playwright/test';
 export default defineConfig({
   testDir: './tests/e2e',
   fullyParallel: true,
+  workers: 2,
   retries: 0,
   reporter: [['list'], ['html', { open: 'never' }]],
   use: {
@@ -13,7 +14,7 @@ export default defineConfig({
   webServer: [
     {
       command:
-        'uv run uvicorn app.main:app --app-dir apps/api --host 127.0.0.1 --port 8001 --loop app.core.event_loop:database_event_loop',
+        'uv run uvicorn tests.e2e_app:app --app-dir apps/api --host 127.0.0.1 --port 8001 --loop app.core.event_loop:database_event_loop',
       url: 'http://127.0.0.1:8001/api/v1/health/live',
       reuseExistingServer: false,
       timeout: 60_000,

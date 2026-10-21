@@ -1,14 +1,28 @@
 import asyncio
 import json
-from typing import Any
+from typing import Any, Literal
 
 import httpx
 
-from app.agent.runtime.contracts import ModelInput, ModelReply
+from app.agent.runtime.contracts import ROLE_TOKEN_BUDGETS, ModelInput, ModelReply, Role
 
 
 class ProviderError(RuntimeError):
     """Only stable sanitized error codes are allowed outside the adapter."""
+
+    def __init__(self, code: str, *, model: str | None = None, usage: dict[str, int] | None = None):
+        super().__init__(code)
+        self.model, self.usage = model, usage
+
+
+def public_usage(value: Any) -> dict[str, int] | None:
+    if not isinstance(value, dict):
+        return None
+    return {
+        k: v
+        for k, v in value.items()
+        if k in {"prompt_tokens", "completion_tokens", "total_tokens"} and type(v) is int and v >= 0
+    } or None
 
 
 async def bounded_body(response: httpx.Response, limit: int = 2_000_000) -> bytes:
@@ -29,10 +43,15 @@ class ChatProvider:
         model: str,
         capacity: int,
         timeout: float,
+        *,
+        role_budgets: dict[Role, int] | None = None,
+        thinking: Literal["enabled", "disabled"] | None = None,
     ):
         self.client, self.base_url, self.key, self.model = client, base_url.rstrip("/"), key, model
         self.semaphore = asyncio.Semaphore(capacity)
         self.timeout = timeout
+        self.role_budgets = {**ROLE_TOKEN_BUDGETS, **(role_budgets or {})}
+        self.thinking = thinking
 
     async def generate(self, call: ModelInput) -> ModelReply:
         if not self.key:
@@ -48,7 +67,9 @@ class ChatProvider:
             )
             + (
                 "Use insufficient_evidence with limitations when data is absent. "
-                "Do not output hidden reasoning. Write explanations in Chinese.\n"
+                "Do not output hidden reasoning or repeat the input/schema. Use compact JSON, "
+                "short atomic statements, unique citations, and no Markdown fences. "
+                "Complete required fields before optional detail. Write explanations in Chinese.\n"
             )
             + call.instructions
             + "\nJSON Schema:\n"
@@ -63,11 +84,16 @@ class ChatProvider:
                     "content": json.dumps(call.context, ensure_ascii=False, default=str),
                 },
             ],
-            "max_tokens": call.max_tokens,
+            "max_tokens": call.max_tokens
+            if "max_tokens" in call.model_fields_set
+            else self.role_budgets[call.role],
             "stream": True,
             "stream_options": {"include_usage": True},
             "response_format": {"type": "json_object"},
         }
+        if self.thinking is not None:
+            payload["thinking"] = {"type": self.thinking}
+        usage_result, returned_model = None, None
         try:
             # Queueing is inside the deadline, so saturation cannot create unbounded waits.
             async with asyncio.timeout(self.timeout), self.semaphore:
@@ -83,7 +109,7 @@ class ChatProvider:
                     streaming = "text/event-stream" in response.headers.get("content-type", "")
             body: dict[str, Any]
             if streaming or raw.lstrip().startswith("data:"):
-                content, usage, model = "", None, self.model
+                content, usage, model, finish_reason = "", None, self.model, None
                 for line in raw.splitlines():
                     if not line.startswith("data:") or line[5:].strip() == "[DONE]":
                         continue
@@ -92,33 +118,33 @@ class ChatProvider:
                     usage = frame.get("usage") or usage
                     for choice in frame.get("choices", []):
                         content += (choice.get("delta") or {}).get("content") or ""
+                        if choice.get("finish_reason") == "length":
+                            finish_reason = "length"
                 body = {
                     "model": model,
                     "usage": usage,
-                    "choices": [{"message": {"content": content}}],
+                    "choices": [{"message": {"content": content}, "finish_reason": finish_reason}],
                 }
             else:
                 body = json.loads(raw)
+            usage_result = public_usage(body.get("usage"))
+            returned_model = str(body.get("model") or self.model)[:200]
+            if body["choices"][0].get("finish_reason") == "length":
+                raise ProviderError(
+                    "model_output_truncated", model=returned_model, usage=usage_result
+                )
             content = body["choices"][0]["message"]["content"].strip()
             if content.startswith("```") and content.endswith("```"):
                 content = content.split("\n", 1)[1].rsplit("```", 1)[0]
             data = json.loads(content)
             if not isinstance(data, dict):
-                raise ProviderError("model_invalid_json")
-            usage_data = body.get("usage")
-            usage_result = {
-                k: v
-                for k, v in (usage_data or {}).items()
-                if k in {"prompt_tokens", "completion_tokens", "total_tokens"}
-                and isinstance(v, int)
-                and v >= 0
-            } or None
-            return ModelReply(
-                data=data, model=str(body.get("model") or self.model)[:200], usage=usage_result
-            )
+                raise ProviderError("model_invalid_json", model=returned_model, usage=usage_result)
+            return ModelReply(data=data, model=returned_model, usage=usage_result)
         except TimeoutError:
             raise ProviderError("model_timeout") from None
-        except httpx.HTTPError:
-            raise ProviderError("model_transport_error") from None
+        except httpx.HTTPError as exc:
+            raise ProviderError("model_transport_error_" + type(exc).__name__) from None
         except (ValueError, KeyError, IndexError, TypeError, AttributeError):
-            raise ProviderError("model_invalid_json") from None
+            raise ProviderError(
+                "model_invalid_json", model=returned_model, usage=usage_result
+            ) from None

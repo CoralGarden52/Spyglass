@@ -14,7 +14,7 @@
 | DB              | PostgreSQL + pgvector、SQLAlchemy 2、Alembic                   | 业务数据与向量；迁移显式管理                 |
 | Redis           | Redis                                                          | 缓存/限流；后续可接可靠队列和事件传输        |
 | AI Provider     | DeepSeek API，经自有适配层                                     | 接口隔离、可替换、记录模型版本               |
-| Search Provider | DeepSeek Search API，经 Tool 适配层                                      | 搜索结果规范化、去重、来源记录               |
+| Search Provider | DeepSeek Search API，经 Tool 适配层                            | 搜索结果规范化、去重、来源记录               |
 | 测试            | pytest、Vitest、React Testing Library、Playwright              | 单元、集成与端到端                           |
 | 部署            | Docker Compose，明确镜像版本和迁移指令                         | MVP 单实例部署；未来拆分 API/Worker          |
 
@@ -447,7 +447,6 @@ MVP Docker Compose 服务可为 `web`、`api`、`postgres`（安装 pgvector）�
 - Reviewer 合并确定性引用/Schema 检查与模型独立审查，按 target 路由真实节点，保存每轮问题和内容摘要；摘要排除新分配的 Claim ID，仅 ID 变化不能当作返工成功。最多两次返工，无变化或仍不合格进入 needs_review。Writer 只能选本轮已有 Claim，事实正文由持久化 Claim/分析产物构建。
 - 新增认证只读 API：GET `/research/{project_id}/reports`、GET `/reports/{report_id}`、GET `/evidence/{evidence_id}`；路径为 UUID，统一错误和生成的 TS 类型保持同步。报告返回当前结构化版本、质量历史、真实调用和产物修订，项目详情可查看/刷新和打开证据。此为当前最小结果读回，不提前宣布 Slice 4 的 Run 创建/SSE/实时双栏或 Slice 5 的完整报告中心完成。
 
-
 ## 16. DeepSeek Search 原生来源字段（2026-10-20 用户变更）
 
 - 唯一搜索端点固定为 `https://api.deepseek.com/v1/tools/search`，仅读取 `DEEPSEEK3_API_KEY`，不复用聊天网关 BASE_URL，无 Bocha 网络回退。单查询最多 128 字符、最多取 5 条；共享并发上限 3，每次请求启动间隔至少 0.21 秒（单 API 进程），请求/排队总预算 30 秒，不自动重试收费调用。多个进程共享账户配额需要后续 Redis 调度，当前不是分布式限流。
@@ -456,3 +455,17 @@ MVP Docker Compose 服务可为 `web`、`api`、`postgres`（安装 pgvector）�
 - 有日期的有效证据按 date 从近到远提供，未知日期后置；Collector Prompt `collector-deepseek-search-v1` 明确产品消歧、官方来源及 after: 日期操作符，时效敏感的消息/评价优先近期；持续更新但无发布日期的官方价格页仍可用，Analyst 明确区分采集时间与发布时间并解释陈旧/冲突证据。
 - 只读 Evidence API 新增可空 search_result；Report API 新增 search_sources（同 Tenant/Run 候选，含 rejected），前端显示原生评分、date、来源指数和公式，snippet 用于列表，summary 用于证据正文。历史无原生字段的证据显示未知，不回填评分。
 - 6 个场景 Skill 升至 0.1.1 并声明 deepseek_search，4 核心/3 增强版本不变。历史 0.1.0 的 bocha_search 仅作为 DeepSeek 的许可别名兼容，不再实现或访问 Bocha；历史快照/报告不改写。API 当前 schema_version 1 采用可选字段增量演进，OpenAPI/TS 同步生成。
+
+## 17. Slice 4 已实现协议（2026-10-21）
+
+- `0006_run_events` 新增 run_events、run_steps、tool_calls。均有 Tenant/Run 复合外键；事件 `(run_id,seq)` 唯一，写入持有 Run 行锁，step 的 ContextVar 隔离并行节点。终态操作按 Thread → Run 顺序加锁，原子保存 Run 状态、唯一最终 assistant 消息和终态事件；完成后不能被迟到取消逆转。
+- 新增认证接口（统一 `/api/v1` 前缀）：POST/GET `/threads/{id}/runs`、GET `/runs/{id}`、GET `/runs/{id}/events/history?after_seq&limit`、GET SSE `/runs/{id}/events?after_seq`、POST `/runs/{id}/cancel` 与 `/resume`、GET `/research/{project_id}/threads`。写操作要求 CSRF、可信 Origin 和 Idempotency-Key；取消本身为幂等状态转移。无人工 interrupt 的当前 Graph 对 resume 明确返回 409 `run_not_resumable`，UI 不提供伪恢复按钮。
+- RunView 返回持久化状态、selection、起止时间、错误、真实 usage、report_id。创建在同 Thread 事务锁及活动唯一索引之上进行；提交锁覆盖配置/本地容量检查与提交，配置不足或容量满不留下新 pending。相同创建键重放原 Run，不重新调模型。
+- RunEventView v1：`{event_id:UUID,schema_version:1,seq,run_id,thread_id,type,timestamp,payload}`。事件涵盖 run.started/completed/failed/cancel_requested/cancelled、agent.started/completed、tool.started/completed、model.completed、plan.updated、evidence.added、analysis.updated、report.updated、review.updated 和 message.delta。`run.completed` 的 payload.status 可为 completed/needs_review；message.delta 引用最终持久化消息，不模拟逐 Token 输出。
+- SSE `id` 为 event_id，支持 after_seq 与 Last-Event-ID，游标必须属于当前 Tenant/Run；JSON 历史分页 limit 为 1..500，终态仍排空剩余页。心跳为注释，断线不取消；订阅循环复查会话有效性和成员关系。前端按 Run 独立保存 seq/id 并去重，重连最多三次，刷新读取历史、消息和报告；真实节点阶段由事件推导，独立分析汇合后才标记完成。
+- 当前执行器仍为单 API 进程。启动时把遗留 pending/running/cancel_requested 显式标记 failed/process_restarted；保留已保存报告，不能声称可跨进程续跑。正式队列与 Worker 尚未实现。
+- 工具事件只公开白名单字段、截短查询、脱敏邮箱/Bearer/sk 前缀和 URL 凭证/查询串；模型事件保存真实模型、Prompt 版本、耗时、usage 和安全错误码，不公开隐藏推理。未知用量为 null，步骤混有未知调用时不宣称完整 Token 总量。
+- 提示词版本 `product-agnostic-grounded-v5`：目标产品仅来自用户输入，禁止生产代码/系统 Prompt/默认模板绑定某产品或域名。Collector 按每个产品覆盖产品/定价/评价，再按模式增加有界查询；不执行未验证的模型 site: 域名。评价/消息使用过去 365 天的 after: 日期；无日期官方价格页仍可采纳。空/低相关结果至多改写一次（评价少于两条合格结果时也尝试），供应商错误不自动重试收费请求。六场景任意动态产品名覆盖有单元测试，不能因此承诺所有产品都有公开资料。
+- 模型输入只使用 summary；按产品/类别轮转分配证据，Normalizer 最多 max(组数,24) 条、其他角色 max(组数,32) 条，每条最多 2000 字符并标记前缀截取；不修改数据库原始摘要。Reviewer 只接收被引用证据和紧凑章节，移除重复 analysis；Writer 独立生成有 Schema 的章节 outline，服务器从持久化产物无损映射全部 Claim ID，避免复制长 UUID 列表导致格式错误。
+- 默认角色输出预算：Planner 2000、Collector 3000、Normalizer/Analyst 6000、Writer 3000、Reviewer 4000；`LLM_ROLE_MAX_TOKENS` 允许部分覆盖 100..12000。`finish_reason=length` 明确失败，不靠截断/拼补 JSON 消除错误。`LLM_PROVIDER` 显式选择 deepseek/deepseek3 对应配置；`LLM_THINKING=provider_default` 不发送额外字段，仅支持该选项的供应商可显式 enabled/disabled。原有并发 3、单调用 60 秒、Run 240 秒、最多返工 2 次不变。
+- 来源列表/证据详情显示原生 title、snippet、完整 URL、UTC date、site_name/site_icon；图标限 HTTPS、无 referrer，缺失或失败使用默认图标。评分与自定义来源指数继续按第 16 节，未知日期不改写。报告质量仍由 Reviewer 决定，完整输入链路不等于质量必定通过。

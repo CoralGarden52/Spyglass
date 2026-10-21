@@ -71,6 +71,16 @@ class ResearchRepository:
             ),
         )
 
+    async def threads(self, project_id: UUID) -> list[Thread]:
+        return list(
+            await self.database.scalars(
+                select(Thread)
+                .where(Thread.project_id == project_id, Thread.tenant_id == self.context.tenant_id)
+                .order_by(Thread.created_at.desc(), Thread.id)
+                .limit(100)
+            )
+        )
+
     async def create_thread(self, payload: ThreadInput, key: str, fingerprint: str) -> Thread:
         values = payload.model_dump() | {
             "tenant_id": self.context.tenant_id,

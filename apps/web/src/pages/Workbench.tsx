@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
-import { useQuery } from '@tanstack/react-query';
-import { Link } from 'react-router';
+import { useRef, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Link, useNavigate } from 'react-router';
 import { useIdentity } from '../features/auth/session';
 import { listProjects } from '../services/research';
 import {
@@ -24,6 +25,8 @@ import {
 import { WorkbenchSkills } from '../features/skills/WorkbenchSkills';
 import { HealthStatus } from '../features/health/HealthStatus';
 import { useWorkbench } from '../stores/workbench';
+import { fetchReadiness } from '../services/health';
+import { launchResearch, newLaunchAttempt, type LaunchAttempt } from '../services/launch';
 
 const templates = [
   {
@@ -31,32 +34,74 @@ const templates = [
     description: '从产品、市场、用户、商业化等维度进行系统性对比分析',
     icon: ClipboardList,
     prompt:
-      '研究 Cursor、Claude Code 与 Windsurf 的产品定位、核心功能、定价策略和公开用户评价，生成带可核验来源的竞品分析报告。',
+      '研究[产品名称 A]、[产品名称 B]的产品定位、核心功能、定价策略和公开用户评价，生成带可核验来源的竞品分析报告。',
   },
   {
     title: '功能对标分析',
     description: '围绕核心功能与体验，对竞品进行结构化对标分析',
     icon: ListChecks,
     prompt:
-      '比较目标竞品的核心功能与用户体验。请先向我确认产品名称和需要对比的功能，再基于来源进行分析。',
+      '比较[产品名称 A]、[产品名称 B]的核心功能与用户体验，基于可定位来源分析差异和资料不足。',
   },
   {
     title: '市场格局分析',
     description: '分析市场规模、竞争格局与发展趋势，识别关键机会点',
     icon: PieChart,
     prompt:
-      '研究目标行业的主要参与者、产品定位和竞争差异。没有可靠来源的市场规模或份额请明确标注未知。',
+      '研究[目标行业]中[产品名称 A]、[产品名称 B]的定位和竞争差异。没有可靠来源的市场规模或份额请明确标注未知。',
   },
   {
     title: '定价策略分析',
     description: '对比竞品定价体系与商业化模式，评估价格策略与市场定位',
     icon: Tag,
-    prompt: '对比目标竞品的公开定价、计费周期、币种、套餐限制与适用用户，注明采集时间及官方来源。',
+    prompt:
+      '对比[产品名称 A]、[产品名称 B]的公开定价、计费周期、币种、套餐限制与适用用户，注明采集时间及官方来源。',
   },
 ];
 
 export function Workbench() {
-  const { draft, setDraft, mode, setMode } = useWorkbench();
+  const store = useWorkbench();
+  const { draft, setDraft, mode, setMode } = store;
+  const hasTemplateFields = /\[(产品名称[^\]]*|目标行业)\]/.test(draft);
+  const attempt = useRef<LaunchAttempt | null>(null);
+  const [locked, setLocked] = useState(false);
+  const [savedThreadId, setSavedThreadId] = useState<string>();
+  const navigate = useNavigate();
+  const client = useQueryClient();
+  const readiness = useQuery({
+    queryKey: ['system', 'readiness'],
+    queryFn: fetchReadiness,
+    retry: false,
+  });
+  const available =
+    readiness.data?.status === 'ready' &&
+    readiness.data.providers.deepseek === 'configured' &&
+    readiness.data.providers.deepseek_search === 'configured';
+  const launch = useMutation({
+    mutationFn: () => {
+      const input = {
+        user_message: draft.trim(),
+        mode,
+        scenario_skill_id: store.scenarioSkillId,
+        advanced_skill_ids: store.advancedSelection === 'manual' ? store.advancedSkillIds : [],
+        advanced_skill_selection: store.advancedSelection,
+      };
+      if (!attempt.current) attempt.current = newLaunchAttempt(input);
+      else if (!locked) {
+        attempt.current.input = input;
+        attempt.current.threadKey = crypto.randomUUID();
+        attempt.current.runKey = crypto.randomUUID();
+      }
+      setLocked(true);
+      return launchResearch(attempt.current);
+    },
+    onError: () => setSavedThreadId(attempt.current?.threadId),
+    onSuccess: ({ threadId, run }) => {
+      client.setQueryData(['run', run.id], { schema_version: 1, data: run });
+      void client.invalidateQueries({ queryKey: ['projects'] });
+      navigate(`/threads/${threadId}`);
+    },
+  });
   const { data: identity } = useIdentity();
   const recent = useQuery({
     queryKey: ['projects', 'recent'],
@@ -85,8 +130,9 @@ export function Workbench() {
           id="research-input"
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
+          disabled={launch.isPending || locked}
           maxLength={8000}
-          placeholder="想分析哪个市场、公司或竞品？例如：分析 Cursor、Claude Code、Windsurf 的产品能力、定价和用户口碑"
+          placeholder="输入产品名称、所属行业和研究目标，对比产品能力、定价与用户口碑"
         />
         <div className="composer-toolbar">
           <div className="mode-options" role="group" aria-label="报告模式">
@@ -102,6 +148,7 @@ export function Workbench() {
                 className={mode === id ? 'mode-button selected' : 'mode-button'}
                 aria-pressed={mode === id}
                 onClick={() => setMode(id)}
+                disabled={launch.isPending || locked}
               >
                 <Icon size={17} />
                 {label}
@@ -125,16 +172,50 @@ export function Workbench() {
               <Globe size={16} />
               公开来源检索
             </span>
-            <button className="primary-button" disabled aria-describedby="research-disabled">
-              开始分析 <ArrowRight size={18} />
+            <button
+              className="primary-button"
+              disabled={!draft.trim() || hasTemplateFields || !available || launch.isPending}
+              onClick={() => launch.mutate()}
+              aria-describedby="research-disabled"
+            >
+              {launch.isPending ? '正在创建研究…' : launch.error ? '重试开始分析' : '开始分析'}{' '}
+              <ArrowRight size={18} />
             </button>
           </div>
         </div>
         <p id="research-disabled" className="composer-note">
-          研究执行尚未开放。当前可编辑需求、配置技能、预览技能计划，并在“我的调研”中创建项目。
+          {hasTemplateFields
+            ? '请将模板中的产品名称和行业替换为本次研究目标后，再开始分析。'
+            : readiness.isPending
+              ? '正在检查研究服务…'
+              : !available
+                ? '研究服务未就绪或 DeepSeek 模型/搜索未配置，请检查系统连接后重试。'
+                : '使用公开来源与已选技能开始真实研究；未找到的事实将标记证据不足。'}
         </p>
+        {launch.error && (
+          <div role="alert" className="form-error">
+            {launch.error.message}。已保留配置和创建记录，重试将使用同一幂等请求。
+          </div>
+        )}
+        {launch.error && (
+          <button
+            className="text-button"
+            onClick={() => {
+              const savedThread = attempt.current?.threadId;
+              if (savedThread) navigate(`/threads/${savedThread}`);
+              else {
+                setLocked(false);
+                launch.reset();
+              }
+            }}
+          >
+            {savedThreadId ? '打开已保存会话并调整配置' : '返回编辑研究需求'}
+          </button>
+        )}
       </section>
-      <WorkbenchSkills />
+      <fieldset className="workbench-skills-fieldset" disabled={launch.isPending || locked}>
+        <WorkbenchSkills />
+      </fieldset>
       <section className="template-section">
         <div className="section-heading">
           <div className="section-title">
@@ -153,6 +234,7 @@ export function Workbench() {
                 setDraft(prompt);
                 document.querySelector<HTMLTextAreaElement>('#research-input')?.focus();
               }}
+              disabled={launch.isPending || locked}
             >
               <span className="tile-icon green">
                 <Icon size={26} />

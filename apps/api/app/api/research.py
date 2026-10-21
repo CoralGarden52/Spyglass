@@ -11,6 +11,7 @@ from app.domain.schemas import (
     ProjectList,
     ProjectResult,
     ThreadInput,
+    ThreadList,
     ThreadResult,
 )
 
@@ -45,6 +46,11 @@ async def create_thread(
     payload: ThreadInput, db: Database, context: WriteContext, key: IdempotencyKey
 ) -> ThreadResult:
     return await ResearchService(db, context).create_thread(payload, key)
+
+
+@router.get("/research/{project_id}/threads", response_model=ThreadList)
+async def threads(project_id: UUID, db: Database, context: Context) -> ThreadList:
+    return await ResearchService(db, context).threads(project_id)
 
 
 @router.get("/threads/{thread_id}", response_model=ThreadResult)

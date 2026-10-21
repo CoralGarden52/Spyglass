@@ -51,7 +51,7 @@ def test_real_graph_persists_parallel_analysis_and_directed_repairs(api_client: 
     report = api_client.get(f"/api/v1/reports/{report_id}").json()["data"]
     assert len(report["content"]["sections"]) == 4
     assert report["run_id"] == str(run_id)
-    assert len(report["search_sources"]) == 3
+    assert len(report["search_sources"]) == 4
     assert report["search_sources"][0]["result"]["source_confidence"] == 0.86
     assert report["content"]["sentiment_summary"]["sample_count"] == 1
     evidence_id = report["content"]["sections"][0]["claims"][0]["evidence_ids"][0]
@@ -155,14 +155,16 @@ def test_run_deadline_stops_models_and_preserves_explicit_missing_core(
             prepared = await RunPreparation(db, context, api_client.app.state.skills).prepare(
                 thread_id, RunRequest(user_message="Controlled fixture Alpha"), str(uuid4())
             )
-        settings = api_client.app.state.settings.model_copy(update={"run_timeout_seconds": 0.15})
+        # Leave enough time for real PostgreSQL trace writes before the slow analysts.
+        settings = api_client.app.state.settings.model_copy(update={"run_timeout_seconds": 1.0})
         model = ControlledModel(slow_analysis=10)
         started = time.monotonic()
         result = await ResearchRunner(
             api_client.app.state.resources, settings, model, ControlledTools()
         ).execute(context, prepared.run_id)
-        assert time.monotonic() - started < 2
+        assert time.monotonic() - started < 3
         assert result["status"] == "needs_review"
+        assert model.peak_analysts == 3
         assert model.active_analysts == 0
         store = ResearchStore(api_client.app.state.resources.sessions, context, prepared.run_id)
         assert (await store.run()).error_code == "run_timeout"

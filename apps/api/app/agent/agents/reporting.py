@@ -1,6 +1,9 @@
 from typing import Any, Literal, cast
 from uuid import UUID
 
+from pydantic import ValidationError
+
+from app.agent.agents.prompts import PROMPT_VERSION, REVIEWER, WRITER
 from app.agent.runtime.context import NodeContext
 from app.agent.runtime.contracts import (
     Issue,
@@ -9,6 +12,8 @@ from app.agent.runtime.contracts import (
     ReportSection,
     ReviewResult,
     ReviewVerdict,
+    SectionPlan,
+    WritingOutline,
     WritingPlan,
 )
 from app.agent.runtime.sentiment import aggregate_reviews
@@ -78,33 +83,33 @@ class ReportingNodes:
         try:
             raw = await self.c.call(
                 "writer",
-                (
-                    "Compose a report plan with exactly one section per supplied "
-                    "Skill. Select only existing claim IDs under their original Skill."
-                    " Do not invent prose facts, claims or numbers. Section text is "
-                    "rendered from verified structured analyses and claims. Include "
-                    "all factual claims. Respond in Chinese."
-                ),
+                WRITER,
                 {
                     "artifacts": {k: v.payload for k, v in artifacts.items()},
-                    "claims": claims,
+                    "request": (await self.c.store.run()).request_json,
                     "repair": state.get("review_result"),
                 },
-                WritingPlan,
+                WritingOutline,
+                version="writer-" + PROMPT_VERSION,
             )
-            plan = WritingPlan.model_validate(raw)
-            selected = {s.skill_id for s in plan.sections}
+            outline = WritingOutline.model_validate(raw)
+            selected = {s.skill_id for s in outline.sections}
             expected = set(artifacts)
-            if (
-                selected != expected
-                or len(plan.sections) != len(expected)
-                or any(
-                    not any(c["id"] == str(i) and c["skill_id"] == s.skill_id for c in claims)
-                    for s in plan.sections
-                    for i in s.claim_ids
-                )
-            ):
+            if selected != expected or len(outline.sections) != len(expected):
                 raise ProviderError("schema_error:writer_references")
+            plan = WritingPlan(
+                title=outline.title,
+                sections=[
+                    SectionPlan(
+                        skill_id=s.skill_id,
+                        claim_ids=[UUID(c["id"]) for c in claims if c["skill_id"] == s.skill_id],
+                    )
+                    for s in outline.sections
+                ],
+            )
+        except ValidationError:
+            plan = None
+            writer_error = "schema_error:writer_references"
         except ProviderError as exc:
             # Honest structural readback; never fabricate missing prose or analysis.
             plan = None
@@ -117,7 +122,6 @@ class ReportingNodes:
         artifacts = await self.c.store.artifacts()
         evidence = await self.c.store.evidence()
         valid = {e["id"] for e in evidence}
-        claims = await self.c.store.claims()
         versions = await self.c.store.rows(ReportVersion)
         draft = ReportDraft.model_validate(max(versions, key=lambda v: v.version).content_json)
         issues = []
@@ -142,7 +146,10 @@ class ReportingNodes:
                         repair_request="采集来源后补齐可验证的引用",
                     )
                 )
-            if any(str(i).startswith(("schema_error", "model_invalid_json")) for i in limits):
+            if any(
+                str(i).startswith(("schema_error", "model_invalid_json", "model_output_truncated"))
+                for i in limits
+            ):
                 issues.append(
                     Issue(
                         type="schema_error",
@@ -192,23 +199,26 @@ class ReportingNodes:
             verdict = ReviewVerdict.model_validate(
                 await self.c.call(
                     "reviewer",
-                    (
-                        "Independently audit facts against exact supplied evidence, "
-                        "contradictions, pricing dates and units, missing claims/sections "
-                        "and review authenticity. Return actionable issues targeted to "
-                        "collector (source gaps/outdated), analyst "
-                        "(interpretation/contradiction/schema), or writer (section/claim "
-                        "mapping). A declared insufficiency is honest but cannot become a "
-                        "supported fact. Never invent evidence. passed may be true only if"
-                        " issues is empty."
-                    ),
+                    REVIEWER,
                     {
-                        "report": draft.model_dump(mode="json"),
-                        "claims": claims,
-                        "untrusted_evidence": evidence,
+                        "report": draft.model_dump(
+                            mode="json", exclude={"sections": {"__all__": {"analysis"}}}
+                        ),
+                        "untrusted_evidence": [
+                            e
+                            for e in evidence
+                            if e["id"]
+                            in {
+                                str(ref)
+                                for section in draft.sections
+                                for claim in section.claims
+                                for ref in claim.evidence_ids
+                            }
+                        ],
                         "prior_review": state.get("review_result"),
                     },
                     ReviewVerdict,
+                    version="reviewer-" + PROMPT_VERSION,
                 )
             )
             issues.extend(verdict.issues)

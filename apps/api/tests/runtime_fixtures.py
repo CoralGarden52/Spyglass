@@ -185,9 +185,6 @@ class ControlledModel:
                 "sections": [
                     {
                         "skill_id": key,
-                        "claim_ids": [
-                            c["id"] for c in call.context["claims"] if c["skill_id"] == key
-                        ],
                     }
                     for key in call.context["artifacts"]
                 ],

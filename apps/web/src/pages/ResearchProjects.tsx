@@ -5,6 +5,7 @@ import { FileText, FolderPlus, Search, X } from 'lucide-react';
 import { createProject, getProject, listProjects } from '../services/research';
 import { ApiError } from '../services/client';
 import { ProjectReports } from '../features/reports/ProjectReports';
+import { ProjectThreads } from '../features/runs/ProjectThreads';
 
 const modeLabels: Record<string, string> = {
   quick: '快速调研',
@@ -63,7 +64,7 @@ export function ResearchProjects() {
       <div className="page-heading">
         <div>
           <h1>我的调研</h1>
-          <p>管理你的调研项目。项目已持久化，研究执行将在后续开放。</p>
+          <p>管理调研项目，打开会话继续研究并查看已保存的报告。</p>
         </div>
         <button className="soft-button" onClick={() => setCreating(true)}>
           <FolderPlus size={17} />
@@ -113,7 +114,9 @@ export function ResearchProjects() {
                 }}
               />
             </label>
-            <p className="muted">创建项目不会调用模型或启动调研。场景与分析技能将在后续接入。</p>
+            <p className="muted">
+              保存项目后，可在项目中创建会话并配置研究。创建项目本身不调用模型。
+            </p>
             {mutation.error && (
               <p role="alert" className="form-error">
                 {mutation.error instanceof ApiError ? mutation.error.message : '创建失败，请重试'}
@@ -231,13 +234,7 @@ export function ResearchDetail() {
               {statusLabels[project.data?.data.status ?? ''] ?? '待确认'}
             </span>
           </div>
-          <section className="account-panel">
-            <h2>项目已保存</h2>
-            <p className="muted">刷新后仍可读取项目及已保存报告。前端运行入口将在下一切片接入。</p>
-            <button className="primary-button" disabled title="研究执行尚未开放">
-              开始分析（尚未开放）
-            </button>
-          </section>
+          <ProjectThreads projectId={id} />
           <ProjectReports projectId={id} />
         </>
       )}

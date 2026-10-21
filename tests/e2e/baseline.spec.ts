@@ -22,9 +22,8 @@ test('desktop workbench reads real API and respects the reference structure', as
   await expect(page.getByText('Redis 已连接')).toBeVisible();
   await expect(page.getByRole('complementary')).not.toContainText('场景技能');
   await expect(page.getByRole('button', { name: '开始分析' })).toBeDisabled();
-  await expect(page.getByText(/研究执行尚未开放/)).toBeVisible();
   await page.getByRole('button', { name: '竞品深度分析' }).click();
-  await expect(page.getByRole('textbox', { name: '研究目标' })).toHaveValue(/Cursor/);
+  await expect(page.getByRole('textbox', { name: '研究目标' })).toHaveValue(/产品名称 A/);
   await page.getByRole('button', { name: '深度调研', exact: true }).click();
   await expect(page.getByRole('button', { name: '深度调研', exact: true })).toHaveAttribute(
     'aria-pressed',

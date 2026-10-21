@@ -13,9 +13,11 @@ from app.api.auth import router as auth_router
 from app.api.health import router
 from app.api.reports import router as reports_router
 from app.api.research import router as research_router
+from app.api.runs import router as runs_router
 from app.api.skills import router as skills_router
 from app.core.config import ROOT, Settings
 from app.core.errors import ErrorResponse, install_error_handlers
+from app.infrastructure.event_store import fail_orphaned_runs
 from app.infrastructure.providers.chat import ChatProvider
 from app.infrastructure.resources import Resources
 
@@ -36,16 +38,26 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         )
         provider = ChatProvider(
             client,
-            config.deepseek_base_url,
-            config.deepseek_api_key.get_secret_value(),
-            config.deepseek_model,
+            config.active_model_base_url,
+            config.active_model_key.get_secret_value(),
+            config.active_model_name,
             config.llm_max_concurrency,
             config.llm_request_timeout_seconds,
+            role_budgets=config.llm_role_max_tokens,
+            thinking=None if config.llm_thinking == "provider_default" else config.llm_thinking,
         )
         application.state.executor = LocalRunExecutor(
             ResearchRunner(resources, config, provider, ToolRegistry(client, config)),
             config.local_run_capacity,
         )
+        # Liveness remains available before migrations. Never execute orphaned work twice.
+        try:
+            await resources.check_migration()
+        except Exception:
+            application.state.recovery_status = "database_unavailable"
+        else:
+            await fail_orphaned_runs(resources.sessions)
+            application.state.recovery_status = "complete"
         try:
             yield
         finally:
@@ -65,7 +77,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         CORSMiddleware,
         allow_origins=config.cors_origins,
         allow_methods=["GET", "POST", "PATCH"],
-        allow_headers=["Content-Type", "X-CSRF-Token", "Idempotency-Key"],
+        allow_headers=["Content-Type", "X-CSRF-Token", "Idempotency-Key", "Last-Event-ID"],
         allow_credentials=True,
         expose_headers=["X-Request-ID"],
     )
@@ -88,6 +100,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     application.include_router(research_router)
     application.include_router(skills_router)
     application.include_router(reports_router)
+    application.include_router(runs_router)
     return application
 
 

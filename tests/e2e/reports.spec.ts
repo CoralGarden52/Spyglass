@@ -37,6 +37,23 @@ test('real persisted report, source readback, repair versions and refresh', asyn
   await page.getByText('质检与返工记录（2 次）', { exact: true }).click();
   await expect(page.getByText('第 1 次审查 · 定向返工', { exact: true })).toBeVisible();
   await expect(page.getByText('第 2 次审查 · 通过', { exact: true })).toBeVisible();
+  await page.getByText(/DeepSeek 检索来源（/).click();
+  await expect(page.locator('.source-card').first()).toBeVisible();
+  await expect(page.locator('.source-card').first()).toContainText('Synthetic short UI snippet');
+  await expect(page.locator('.source-card').first().getByRole('link')).toHaveAttribute(
+    'target',
+    '_blank',
+  );
+  await page.getByRole('textbox', { name: '搜索来源' }).fill('no-matching-controlled-source');
+  await expect(page.getByText('没有匹配的来源')).toBeVisible();
+  await page.getByRole('button', { name: '重置筛选' }).click();
+  await page
+    .locator('.source-card')
+    .first()
+    .getByRole('button', { name: /查看证据/ })
+    .click();
+  await expect(page.getByRole('dialog', { name: '证据来源' })).toBeVisible();
+  await page.keyboard.press('Escape');
   await page.screenshot({ path: '.artifacts/screenshots/slice-3-report.png', fullPage: true });
   await page.reload();
   await page.getByRole('button', { name: /Controlled fixture report/ }).click();

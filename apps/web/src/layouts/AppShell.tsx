@@ -33,15 +33,18 @@ export function AppShell() {
   const [menuOpen, setMenuOpen] = useState(false);
   const { data } = useIdentity();
   const location = useLocation();
-  const pageTitle = location.pathname.startsWith('/research')
-    ? '我的调研'
-    : location.pathname.startsWith('/skills')
-      ? '技能中心'
-      : location.pathname === '/settings'
-        ? '账户与工作空间'
-        : '工作台';
+  const isSession = location.pathname.startsWith('/threads/');
+  const pageTitle = location.pathname.startsWith('/threads')
+    ? '调研会话'
+    : location.pathname.startsWith('/research')
+      ? '我的调研'
+      : location.pathname.startsWith('/skills')
+        ? '技能中心'
+        : location.pathname === '/settings'
+          ? '账户与工作空间'
+          : '工作台';
   return (
-    <div className="app-shell">
+    <div className={`app-shell ${isSession ? 'session-shell' : ''}`}>
       <aside className={`sidebar ${menuOpen ? 'is-open' : ''}`} aria-label="全局侧边栏">
         <Link to="/" className="brand" onClick={() => setMenuOpen(false)}>
           <Compass size={32} strokeWidth={2.4} />
@@ -83,7 +86,7 @@ export function AppShell() {
           )}
         </nav>
         <p id="navigation-note" className="navigation-note">
-          研究服务接入中
+          调研会话已接入
           <br />
           其余业务页面将陆续开放
         </p>
@@ -157,7 +160,7 @@ export function AppShell() {
             </button>
           </div>
         </header>
-        <Outlet />
+        <Outlet context={{ openNavigation: () => setMenuOpen(true) }} />
       </div>
     </div>
   );

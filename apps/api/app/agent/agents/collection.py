@@ -1,10 +1,11 @@
 import asyncio
 from datetime import UTC, datetime
-from typing import Any
 from uuid import UUID, uuid5
 
+from app.agent.agents.prompts import COLLECTOR, NORMALIZER, PLANNER, PROMPT_VERSION
+from app.agent.agents.queries import coverage_searches, rewrite_empty_query
 from app.agent.runtime.context import NodeContext
-from app.agent.runtime.contracts import CollectionPlan, NormalizedBundle, ResearchPlan
+from app.agent.runtime.contracts import CollectionPlan, NormalizedBundle, ResearchPlan, SearchTask
 from app.agent.runtime.state import ResearchState
 from app.infrastructure.database.knowledge import (
     CompetitorProfile,
@@ -26,13 +27,10 @@ class CollectionNodes:
         try:
             plan = await self.c.call(
                 "planner",
-                (
-                    "Extract the explicitly requested competitors and research scope. "
-                    "Do not add competitors not requested.\n"
-                )
-                + scenario["instructions"],
+                PLANNER + scenario["instructions"],
                 {"request": request, "scenario_dimensions": scenario["manifest"]["dimensions"]},
                 ResearchPlan,
+                version="planner-" + PROMPT_VERSION,
             )
         except ProviderError:
             # No trustworthy scope means there is no valid collection task to execute.
@@ -55,50 +53,65 @@ class CollectionNodes:
         plan = plans[0].payload
         scenario = next(d for d in self.c.definitions.values() if d["kind"] == "scenario")
         previous = state.get("review_result") or {}
+        as_of = datetime.now(UTC).date()
         try:
             raw = await self.c.call(
                 "collector",
-                (
-                    "Plan specific public web searches for official product "
-                    "capabilities, current official pricing, and verbatim public user "
-                    "reviews. Cover all competitors. Repair issues by searching new "
-                    "relevant sources. Each DeepSeek query must be at most 128 Unicode "
-                    "characters. Disambiguate product identity (e.g. Windsurf AI editor, "
-                    "not the sport; Claude Code, not general Claude API). Prefer official "
-                    "domains using site: when verified. Use after:YYYY-MM-DD for recent "
-                    "news/reviews, but allow undated living official pricing pages. "
-                    "Never invent official domains.\n"
-                )
-                + scenario["instructions"],
+                COLLECTOR + scenario["instructions"],
                 {
                     "plan": plan,
                     "repair": previous.get("issues", []),
-                    "as_of_utc": datetime.now(UTC).date().isoformat(),
+                    "as_of_utc": as_of.isoformat(),
                 },
                 CollectionPlan,
-                version="collector-deepseek-search-v1",
+                version="collector-" + PROMPT_VERSION,
             )
             collection = CollectionPlan.model_validate(raw)
         except ProviderError:
-            return {"evidence_ids": [e["id"] for e in await self.c.store.evidence()]}
+            # Query planning is optional; trusted scope still allows bounded real searches.
+            collection = None
         mode = (plan.get("request") or {}).get("mode", "standard")
-        limit = {"quick": 3, "standard": 6, "deep": 10}[mode]
+        searches = coverage_searches(
+            plan["competitor_names"], collection, mode, scenario["id"], as_of
+        )
         gate = asyncio.Semaphore(3)
 
-        async def collect(task: Any, index: int) -> None:
+        async def collect(task: SearchTask) -> None:
             async with gate:
                 try:
                     pages = await self.c.tool(
                         "deepseek_search", {"query": task.query, "count": 5}, scenario["id"]
                     )
                     for page in pages:
-                        await self.c.store.save_source(page, task.category)
+                        await self.c.store.save_source(
+                            {**page, "competitor_name": task.competitor_name}, task.category
+                        )
+                    # Empty/irrelevant summaries get one broader rewrite, never infinite
+                    # retries. Provider errors (especially rate limits) are not retried here.
+                    usable_count = sum(
+                        p.get("excerpt", "").strip()
+                        and (
+                            p.get("search_result") is None
+                            or (p["search_result"].get("rerank_score") or 0) >= 1.5
+                        )
+                        for p in pages
+                    )
+                    rewrite = rewrite_empty_query(task, scenario["id"], as_of)
+                    native = any(p.get("search_result") is not None for p in pages)
+                    # A single review hit may only be a secondary article. Broaden once.
+                    target = 2 if task.category == "review" and native else 1
+                    if usable_count < target and rewrite:
+                        pages = await self.c.tool(
+                            "deepseek_search", {"query": rewrite, "count": 5}, scenario["id"]
+                        )
+                        for page in pages:
+                            await self.c.store.save_source(
+                                {**page, "competitor_name": task.competitor_name}, task.category
+                            )
                 except ProviderError:
                     return
 
-        await asyncio.gather(
-            *(collect(task, i) for i, task in enumerate(collection.searches[:limit]))
-        )
+        await asyncio.gather(*(collect(task) for task in searches))
         if not await self.c.store.evidence():
             raise ProviderError("collection_unavailable")
         return {"evidence_ids": [e["id"] for e in await self.c.store.evidence()]}
@@ -110,15 +123,10 @@ class CollectionNodes:
             result = NormalizedBundle.model_validate(
                 await self.c.call(
                     "normalizer",
-                    (
-                        "Extract competitor identities and only identifiable verbatim USER"
-                        " REVIEWS. A general article, marketing description or review-"
-                        "platform summary is not an individual review. Quote must be exact"
-                        " substring of supplied evidence; never create or paraphrase a "
-                        "review. Unknown dates null."
-                    ),
+                    NORMALIZER,
                     {"plan": plans[0].payload, "untrusted_evidence": evidence},
                     NormalizedBundle,
+                    version="normalizer-" + PROMPT_VERSION,
                 )
             )
         except ProviderError:
